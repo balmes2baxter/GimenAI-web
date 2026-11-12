@@ -5,7 +5,7 @@ import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.j
 const isMobileScreen = () => window.innerWidth < 860;
 
 // ============================================================================
-// ESTADO GLOBAL LIGERO
+// ESTADO GLOBAL
 // ============================================================================
 const state = {
   activeStep: 0,
@@ -30,7 +30,6 @@ const state = {
   },
 };
 
-// Cargar QR oficial para dibujarlo en la pantalla TFT 3D
 const qrImage = new Image();
 qrImage.crossOrigin = 'anonymous';
 qrImage.src = 'assets/qr-gimenai-web.png';
@@ -39,116 +38,152 @@ qrImage.onload = () => {
   qrImageLoaded = true;
 };
 
-// Capítulos del Scroll con encuadre dedicado para Móvil (robot en la mitad superior) y Desktop
+// ============================================================================
+// CAPÍTULOS CON ENCUADRE POR PIEZA (AJUSTA ESCALA Y FOCO A CADA PARTE EN MÓVIL)
+// ============================================================================
+// En móvil, gimenaRoot se escala más pequeño (modelScale) y el foco de cámara se centra
+// exactamente en la coordenada local de la pieza que se está explicando.
 const SCROLL_CHAPTERS = [
   {
     step: 0,
     counter: '01/08',
-    beaconLabel: 'Gimena · IA Física',
-    camPos: new THREE.Vector3(-1.25, 0.35, 7.0),
-    camTarget: new THREE.Vector3(-1.0, 0.0, 0),
-    mobilePos: new THREE.Vector3(0, 0.15, 7.9),
-    mobileTarget: new THREE.Vector3(0, -0.75, 0),
-    robotRotY: -0.15,
+    beaconLabel: 'Gimena · Vista General',
+    // Cuerpo completo mucho más pequeño y estilizado en móvil
+    mobileScale: 0.44,
+    mobileFocusY: 0.05,     // Punto del robot que queda en la zona superior
+    mobileCamZ: 8.6,
+    desktopScale: 0.78,
+    camPos: new THREE.Vector3(-1.25, 0.25, 7.6),
+    camTarget: new THREE.Vector3(-0.95, -0.05, 0),
+    robotRotY: -0.16,
     viewMode: 'normal',
     anchorLocal: new THREE.Vector3(0, 1.05, 0.94),
+    highlightRadius: 0,
     showPointer: false,
   },
   {
     step: 1,
     counter: '02/08',
-    beaconLabel: 'Pantalla TFT 2.4" ST7789',
-    camPos: new THREE.Vector3(-0.9, 0.88, 4.7),
-    camTarget: new THREE.Vector3(-0.8, 0.72, 0),
-    mobilePos: new THREE.Vector3(0, 0.78, 5.4),
-    mobileTarget: new THREE.Vector3(0, 0.22, 0),
-    robotRotY: -0.08,
+    beaconLabel: 'Pantalla TFT 2.4" (320×240)',
+    // Encuadra el cabezal superior y la pantalla TFT
+    mobileScale: 0.58,
+    mobileFocusY: 1.08,
+    mobileCamZ: 6.4,
+    desktopScale: 0.85,
+    camPos: new THREE.Vector3(-0.9, 0.85, 5.2),
+    camTarget: new THREE.Vector3(-0.8, 0.7, 0),
+    robotRotY: -0.06,
     viewMode: 'normal',
-    anchorLocal: new THREE.Vector3(0, 1.12, 0.94),
+    anchorLocal: new THREE.Vector3(0, 1.14, 0.94),
+    highlightRadius: 0.88,
     showPointer: true,
   },
   {
     step: 2,
     counter: '03/08',
     beaconLabel: 'Micrófono Digital INMP441',
-    camPos: new THREE.Vector3(-0.7, 0.25, 4.3),
-    camTarget: new THREE.Vector3(-0.6, 0.18, 0),
-    mobilePos: new THREE.Vector3(0.25, 0.25, 4.9),
-    mobileTarget: new THREE.Vector3(0.15, -0.25, 0),
-    robotRotY: -0.22,
+    // Encuadra la esquina inferior derecha del bisel de la cabeza (micrófono y ranura)
+    mobileScale: 0.64,
+    mobileFocusY: 0.32,
+    mobileCamZ: 5.8,
+    desktopScale: 0.88,
+    camPos: new THREE.Vector3(-0.65, 0.25, 4.8),
+    camTarget: new THREE.Vector3(-0.55, 0.18, 0),
+    robotRotY: -0.24,
     viewMode: 'normal',
     anchorLocal: new THREE.Vector3(0.62, 0.26, 0.92),
+    highlightRadius: 0.22,
     showPointer: true,
   },
   {
     step: 3,
     counter: '04/08',
     beaconLabel: '19 Perforaciones + Parlante I2S',
-    camPos: new THREE.Vector3(-0.9, -0.55, 4.8),
+    // Encuadra el torso central y la rejilla circular de 19 agujeros
+    mobileScale: 0.58,
+    mobileFocusY: -0.72,
+    mobileCamZ: 6.3,
+    desktopScale: 0.85,
+    camPos: new THREE.Vector3(-0.9, -0.55, 5.3),
     camTarget: new THREE.Vector3(-0.8, -0.65, 0),
-    mobilePos: new THREE.Vector3(0, -0.35, 5.5),
-    mobileTarget: new THREE.Vector3(0, -1.05, 0),
     robotRotY: -0.08,
     viewMode: 'normal',
     anchorLocal: new THREE.Vector3(0, -0.76, 1.03),
+    highlightRadius: 0.48,
     showPointer: true,
   },
   {
     step: 4,
     counter: '05/08',
     beaconLabel: 'Unión 2 Mitades PLA + Brazo',
-    camPos: new THREE.Vector3(-1.1, 0.1, 6.2),
+    // Gira 90° de perfil y encuadra el lateral con su costura y brazo cilíndrico
+    mobileScale: 0.48,
+    mobileFocusY: -0.35,
+    mobileCamZ: 7.8,
+    desktopScale: 0.8,
+    camPos: new THREE.Vector3(-1.1, 0.05, 6.8),
     camTarget: new THREE.Vector3(-0.95, -0.15, 0),
-    mobilePos: new THREE.Vector3(0, 0.1, 7.2),
-    mobileTarget: new THREE.Vector3(0, -0.78, 0),
     robotRotY: Math.PI * 0.48,
     viewMode: 'normal',
-    anchorLocal: new THREE.Vector3(-1.62, -0.72, 0.25),
+    anchorLocal: new THREE.Vector3(-1.62, -0.78, 0.32),
+    highlightRadius: 0.52,
     showPointer: true,
   },
   {
     step: 5,
     counter: '06/08',
-    beaconLabel: '5 Ranuras + Grabado "Gimena" + USB',
-    camPos: new THREE.Vector3(-1.0, 0.15, 5.8),
+    beaconLabel: '5 Ranuras + Grabado "Gimena"',
+    // Gira 180° de espaldas y encuadra las 5 ranuras, el grabado "Gimena" y el cable USB
+    mobileScale: 0.54,
+    mobileFocusY: 0.55,
+    mobileCamZ: 6.8,
+    desktopScale: 0.82,
+    camPos: new THREE.Vector3(-1.0, 0.15, 6.2),
     camTarget: new THREE.Vector3(-0.9, -0.05, 0),
-    mobilePos: new THREE.Vector3(0, 0.15, 6.8),
-    mobileTarget: new THREE.Vector3(0, -0.72, 0),
     robotRotY: Math.PI * 0.96,
     viewMode: 'normal',
     anchorLocal: new THREE.Vector3(0, 0.72, -0.92),
+    highlightRadius: 0.78,
     showPointer: true,
   },
   {
     step: 6,
     counter: '07/08',
-    beaconLabel: 'Cerebro ESP32 + Partes Internas',
-    camPos: new THREE.Vector3(-1.15, 0.25, 6.6),
+    beaconLabel: 'Interior Rayos-X + ESP32',
+    // Vista de despiece/Rayos-X compacta para ver las 4 flechas internas sin salirse de pantalla
+    mobileScale: 0.44,
+    mobileFocusY: -0.1,
+    mobileCamZ: 8.6,
+    desktopScale: 0.76,
+    camPos: new THREE.Vector3(-1.15, 0.2, 7.4),
     camTarget: new THREE.Vector3(-0.95, -0.1, 0),
-    mobilePos: new THREE.Vector3(0, 0.2, 7.6),
-    mobileTarget: new THREE.Vector3(0, -0.75, 0),
     robotRotY: -0.32,
     viewMode: 'exploded',
-    anchorLocal: new THREE.Vector3(0, -0.82, 0),
+    anchorLocal: new THREE.Vector3(0, -0.92, -0.18),
+    highlightRadius: 0.65,
     showPointer: true,
   },
   {
     step: 7,
     counter: '08/08',
     beaconLabel: '📲 ¡Escanea el QR en mi TFT!',
-    camPos: new THREE.Vector3(-0.6, 1.08, 3.55),
-    camTarget: new THREE.Vector3(-0.52, 1.05, 0),
-    mobilePos: new THREE.Vector3(0, 0.95, 4.25),
-    mobileTarget: new THREE.Vector3(0, 0.52, 0),
+    // Encuadra limpiamente la pantalla TFT con el QR para escanearlo desde cualquier ángulo
+    mobileScale: 0.66,
+    mobileFocusY: 1.12,
+    mobileCamZ: 5.5,
+    desktopScale: 0.9,
+    camPos: new THREE.Vector3(-0.65, 1.05, 4.2),
+    camTarget: new THREE.Vector3(-0.55, 1.02, 0),
     robotRotY: 0,
     viewMode: 'normal',
-    anchorLocal: new THREE.Vector3(0.15, 1.12, 0.94),
+    anchorLocal: new THREE.Vector3(0.18, 1.12, 0.94),
+    highlightRadius: 0.85,
     showPointer: true,
   },
 ];
 
 // ============================================================================
-// TEXTURAS LIGERAS: CAPAS PLA + GRABADO TRASERO "GIMENA" + SOMBRA SUAVE
+// TEXTURAS LIGERAS
 // ============================================================================
 function create3DPrintLayerBumpTexture() {
   const canvas = document.createElement('canvas');
@@ -371,7 +406,6 @@ function renderTFTScreen(timeSec) {
     drawPixelEye(55, 24, lx, ly, emotion, state.blinkProgress);
     drawPixelMouth(40, 43, emotion, state.isSpeaking, state.mouthOpen);
   } else {
-    // Modo Anime ligero
     tftCtx.fillStyle = '#a8d8ff';
     tftCtx.fillRect(0, 0, 320, 240);
     tftCtx.fillStyle = '#1e423c';
@@ -398,13 +432,12 @@ function renderTFTScreen(timeSec) {
 }
 
 // ============================================================================
-// ESCENA THREE.JS ULTRALIGERA (OPTIMIZADA PARA MÓVILES)
+// ESCENA THREE.JS ULTRALIGERA
 // ============================================================================
 const container = document.getElementById('canvasContainer');
 const scene = new THREE.Scene();
 
 const camera = new THREE.PerspectiveCamera(36, window.innerWidth / window.innerHeight, 0.1, 60);
-camera.position.copy(isMobileScreen() ? SCROLL_CHAPTERS[0].mobilePos : SCROLL_CHAPTERS[0].camPos);
 
 const renderer = new THREE.WebGLRenderer({
   antialias: true,
@@ -422,9 +455,7 @@ controls.enableDamping = true;
 controls.dampingFactor = 0.07;
 controls.enableZoom = false;
 controls.enablePan = false;
-controls.target.copy(isMobileScreen() ? SCROLL_CHAPTERS[0].mobileTarget : SCROLL_CHAPTERS[0].camTarget);
 
-// En móvil permitimos que el scroll vertical de 1 dedo baje por la página sin bloquearse
 if (isMobileScreen()) {
   controls.touches = {
     ONE: THREE.TOUCH.ROTATE,
@@ -438,7 +469,7 @@ controls.addEventListener('start', () => {
 controls.addEventListener('end', () => {
   setTimeout(() => {
     state.userOrbiting = false;
-  }, 1500);
+  }, 1400);
 });
 
 scene.add(new THREE.AmbientLight(0xdbeafe, 1.05));
@@ -473,12 +504,26 @@ const darkCavityMaterial = new THREE.MeshBasicMaterial({ color: 0x040508 });
 const seamLineMaterial = new THREE.MeshBasicMaterial({ color: 0x05070b });
 
 // ============================================================================
-// CONSTRUCCIÓN DE GIMENA 3D + PARTES INTERNAS DETALLADAS
+// CONSTRUCCIÓN DE GIMENA 3D + ARO 3D ENFOCADOR DE PIEZA
 // ============================================================================
 const gimenaRoot = new THREE.Group();
+const initialScale = isMobileScreen() ? SCROLL_CHAPTERS[0].mobileScale : SCROLL_CHAPTERS[0].desktopScale;
+gimenaRoot.scale.setScalar(initialScale);
 scene.add(gimenaRoot);
 
-// Sombra de contacto ultraligera bajo los pies (sin costo de GPU en móviles)
+// Aro 3D luminoso que rodea y se ajusta al tamaño exacto de la pieza que se está mostrando
+const focusRingGeo = new THREE.RingGeometry(0.88, 0.94, 40);
+const focusRingMat = new THREE.MeshBasicMaterial({
+  color: 0x00d8ff,
+  transparent: true,
+  opacity: 0,
+  side: THREE.DoubleSide,
+  depthTest: false,
+});
+const partFocusRing3D = new THREE.Mesh(focusRingGeo, focusRingMat);
+gimenaRoot.add(partFocusRing3D);
+
+// Sombra radial bajo los pies
 const shadowPlane = new THREE.Mesh(
   new THREE.PlaneGeometry(4.6, 4.6),
   new THREE.MeshBasicMaterial({
@@ -557,7 +602,6 @@ const neckCollarMesh = new THREE.Mesh(new RoundedBoxGeometry(2.54, 0.14, 1.88, 3
 neckCollarMesh.position.set(0, 0.78, 0);
 torsoGroup.add(neckCollarMesh);
 
-// 19 perforaciones del parlante
 const speakerGrilleGroup = new THREE.Group();
 speakerGrilleGroup.position.set(0, 0.06, 1.012);
 torsoGroup.add(speakerGrilleGroup);
@@ -644,11 +688,10 @@ gimenaRoot.add(
   )
 );
 
-// 6. PARTES INTERNAS DETALLADAS (VISIBLES CON RAYOS-X Y FLECHAS INTERNAS)
+// 6. PARTES INTERNAS DETALLADAS
 const internalsGroup = new THREE.Group();
 gimenaRoot.add(internalsGroup);
 
-// 6a. PCB Roja de la Pantalla TFT ST7789 (Dentro de la cabeza)
 const internalTftPcb = new THREE.Mesh(
   new RoundedBoxGeometry(1.62, 1.22, 0.07, 2, 0.02),
   new THREE.MeshStandardMaterial({ color: 0xdc2626, roughness: 0.4, metalness: 0.3 })
@@ -656,19 +699,14 @@ const internalTftPcb = new THREE.Mesh(
 internalTftPcb.position.set(0, 1.14, 0.65);
 internalsGroup.add(internalTftPcb);
 
-// 6b. Módulo Micrófono INMP441 (Placa morada/azul en esquina inferior derecha de la cabeza)
 const internalMicPcb = new THREE.Mesh(
-  new CylinderGeometryOrBox(),
+  new THREE.CylinderGeometry(0.16, 0.16, 0.06, 18),
   new THREE.MeshStandardMaterial({ color: 0x8b5cf6, roughness: 0.35, metalness: 0.4 })
 );
-function CylinderGeometryOrBox() {
-  return new THREE.CylinderGeometry(0.16, 0.16, 0.06, 18);
-}
 internalMicPcb.rotation.x = Math.PI / 2;
 internalMicPcb.position.set(0.62, 0.26, 0.72);
 internalsGroup.add(internalMicPcb);
 
-// 6c. Altavoz + Amplificador I2S MAX98357A (En el pecho)
 const internalSpeakerGroup = new THREE.Group();
 internalSpeakerGroup.position.set(0, -0.76, 0.58);
 internalsGroup.add(internalSpeakerGroup);
@@ -680,7 +718,6 @@ const speakerCone = new THREE.Mesh(
 speakerCone.rotation.x = Math.PI / 2;
 internalSpeakerGroup.add(speakerCone);
 
-// 6d. Placa ESP32 DevKit V1 + Antena WiFi + LED (En la base del torso)
 const esp32Group = new THREE.Group();
 esp32Group.position.set(0, -0.92, -0.18);
 internalsGroup.add(esp32Group);
@@ -711,23 +748,23 @@ esp32Group.add(espLedMesh);
 const internalPinsLayer = document.getElementById('internalPinsLayer');
 const INTERNAL_PARTS_DEFS = [
   {
-    label: 'PCB TFT ST7789 (SPI)',
-    pos: new THREE.Vector3(-0.35, 1.35, 0.65),
+    label: 'PCB TFT ST7789',
+    pos: new THREE.Vector3(-0.45, 1.35, 0.65),
     info: 'Placa controladora SPI de la pantalla TFT 2.4 pulgadas (320×240 px).',
   },
   {
-    label: 'Chip Mic INMP441 (I2S)',
+    label: 'Chip Mic INMP441',
     pos: new THREE.Vector3(0.68, 0.26, 0.72),
     info: 'Sensor MEMS digital omnidireccional de 24-bit para escuchar tu voz.',
   },
   {
-    label: 'Amp MAX98357A + Cono',
-    pos: new THREE.Vector3(0.45, -0.62, 0.58),
+    label: 'Amp MAX98357A',
+    pos: new THREE.Vector3(0.55, -0.62, 0.58),
     info: 'Amplificador clase D I2S conectado al altavoz detrás de las 19 perforaciones.',
   },
   {
-    label: 'ESP32 Dual-Core + WiFi',
-    pos: new THREE.Vector3(-0.45, -1.05, -0.18),
+    label: 'ESP32 Dual-Core',
+    pos: new THREE.Vector3(-0.55, -1.08, -0.18),
     info: 'Cerebro principal a 240 MHz conectado a Gemini 3.5, relés IoT y servidor PC.',
   },
 ];
@@ -738,7 +775,7 @@ const internalPinNodes = INTERNAL_PARTS_DEFS.map((item) => {
   btn.textContent = item.label;
   btn.style.display = 'none';
   btn.addEventListener('click', () => {
-    state.pokeBounce = 0.25;
+    state.pokeBounce = 0.22;
     gimenaSpeak(item.info, 'surprised');
   });
   internalPinsLayer.appendChild(btn);
@@ -762,7 +799,7 @@ function updateInternalPins() {
 }
 
 // ============================================================================
-// FLECHA SVG DINÁMICA VISIBLE EN MÓVIL Y EN ESCRITORIO
+// FLECHA SVG DINÁMICA VISIBLE EN MÓVIL Y DESKTOP
 // ============================================================================
 const pointerPath = document.getElementById('pointerPath');
 const targetBeacon = document.getElementById('targetBeacon');
@@ -781,8 +818,8 @@ function updatePointerLine() {
   const worldTarget = chapter.anchorLocal.clone().applyMatrix4(gimenaRoot.matrixWorld);
   worldTarget.project(camera);
 
-  const tx = (worldTarget.x * 0.5 + 0.5) * window.innerWidth;
-  const ty = (-worldTarget.y * 0.5 + 0.5) * window.innerHeight;
+  const tx = THREE.MathUtils.clamp((worldTarget.x * 0.5 + 0.5) * window.innerWidth, 45, window.innerWidth - 45);
+  const ty = THREE.MathUtils.clamp((-worldTarget.y * 0.5 + 0.5) * window.innerHeight, 50, window.innerHeight * 0.58);
 
   targetBeacon.style.opacity = '1';
   targetBeacon.style.left = `${tx}px`;
@@ -795,19 +832,17 @@ function updatePointerLine() {
   const rect = activeCardEl.getBoundingClientRect();
 
   if (isMobileScreen()) {
-    // En móvil: la flecha nace en el borde superior de la tarjeta inferior y sube hacia la pieza 3D
     const sx = rect.left + rect.width * 0.5;
     const sy = rect.top;
     const cy1 = sy - (sy - ty) * 0.45;
     const cy2 = ty + (sy - ty) * 0.25;
-    pointerPath.setAttribute('d', `M ${sx} ${sy} C ${sx} ${cy1}, ${tx} ${cy2}, ${tx} ${ty + 10}`);
+    pointerPath.setAttribute('d', `M ${sx} ${sy} C ${sx} ${cy1}, ${tx} ${cy2}, ${tx} ${ty + 9}`);
   } else {
-    // En desktop: la flecha nace a la derecha de la tarjeta y apunta al modelo 3D
     const sx = rect.right;
     const sy = rect.top + rect.height * 0.45;
     const cx1 = sx + (tx - sx) * 0.45;
     const cx2 = sx + (tx - sx) * 0.65;
-    pointerPath.setAttribute('d', `M ${sx} ${sy} C ${cx1} ${sy}, ${cx2} ${ty}, ${tx - 10} ${ty}`);
+    pointerPath.setAttribute('d', `M ${sx} ${sy} C ${cx1} ${sy}, ${cx2} ${ty}, ${tx - 9} ${ty}`);
   }
 }
 
@@ -839,7 +874,7 @@ function setViewMode(mode) {
     blackPlaMaterial.opacity = 0.24;
     blackPlaMaterial.depthWrite = false;
   } else if (mode === 'exploded') {
-    blackPlaMaterial.opacity = 0.35;
+    blackPlaMaterial.opacity = 0.32;
     blackPlaMaterial.depthWrite = false;
   }
 }
@@ -877,7 +912,7 @@ function gimenaSpeak(text, emotion = state.emotion) {
 }
 
 // ============================================================================
-// DETECCIÓN DE SCROLL (INTERSECTION OBSERVER)
+// DETECCIÓN DE SCROLL (AJUSTA AUTOMÁTICAMENTE LA ESCALA Y ENCUADRE A LA PARTE)
 // ============================================================================
 const stepElements = document.querySelectorAll('.scroll-step');
 
@@ -899,7 +934,7 @@ const observer = new IntersectionObserver(
       }
     });
   },
-  { threshold: 0.48 }
+  { threshold: 0.45 }
 );
 
 stepElements.forEach((el) => observer.observe(el));
@@ -909,7 +944,7 @@ stepElements.forEach((el) => observer.observe(el));
 // ============================================================================
 document.getElementById('btnHeroSpeak').addEventListener('click', () => {
   state.pokeBounce = 0.25;
-  gimenaSpeak('¡Hola! Desliza con tu dedo para ver cada parte señalada con flechas y mi interior en Rayos X.', 'happy');
+  gimenaSpeak('¡Hola! Desliza hacia abajo y verás cómo me ajusto para mostrarte cada parte con flechas.', 'happy');
 });
 
 btnToggleQrOnTft.addEventListener('click', () => {
@@ -1066,7 +1101,7 @@ renderer.domElement.addEventListener('pointerup', (e) => {
   raycaster.setFromCamera(pointerNDC, camera);
   const hits = raycaster.intersectObjects(gimenaRoot.children, true);
   if (hits.length > 0) {
-    state.pokeBounce = 0.28;
+    state.pokeBounce = 0.25;
     if (hits[0].object.name === 'screen') {
       state.qrOnTftForced = !state.qrOnTftForced;
       gimenaSpeak(state.qrOnTftForced ? '¡QR en mi pantalla TFT activado!' : '¡Jiji! Rostro UwU activado.', state.qrOnTftForced ? 'qr' : 'love');
@@ -1083,7 +1118,7 @@ window.addEventListener('resize', () => {
 });
 
 // ============================================================================
-// BUCLE PRINCIPAL 60 FPS LIGERO
+// BUCLE PRINCIPAL 60 FPS: AJUSTA ESCALA Y ENCUADRE A CADA PARTE EN MÓVIL
 // ============================================================================
 const clock = new THREE.Clock();
 
@@ -1111,13 +1146,43 @@ function animate() {
 
   const chapter = SCROLL_CHAPTERS[state.activeStep] || SCROLL_CHAPTERS[0];
   const mobile = isMobileScreen();
+  const aspect = window.innerWidth / Math.max(window.innerHeight, 1);
 
+  // 1. Escalar el modelo 3D mucho más pequeño en móvil y ajustarlo según la parte mostrada
+  // Si la pantalla del celular es muy angosta (aspect < 0.5), compensamos automáticamente
+  const aspectScaleFactor = mobile ? Math.min(1, aspect / 0.52) : 1;
+  const targetScale = (mobile ? chapter.mobileScale : chapter.desktopScale) * aspectScaleFactor;
+  const nextScale = THREE.MathUtils.lerp(gimenaRoot.scale.x, targetScale, 0.08);
+  gimenaRoot.scale.setScalar(nextScale);
+
+  // 2. En móvil, centramos en la zona superior libre EXACTAMENTE la parte que se está explicando
   if (!state.userOrbiting) {
-    camera.position.lerp(mobile ? chapter.mobilePos : chapter.camPos, 0.07);
-    controls.target.lerp(mobile ? chapter.mobileTarget : chapter.camTarget, 0.07);
+    if (mobile) {
+      const focusY = chapter.mobileFocusY * nextScale;
+      // Desplazar el target ligeramente hacia abajo para que la pieza enfocada quede en el 34% superior de la pantalla
+      const verticalOffset = 0.52;
+      const desiredCamPos = new THREE.Vector3(0, focusY - verticalOffset * 0.35, chapter.mobileCamZ);
+      const desiredTarget = new THREE.Vector3(0, focusY - verticalOffset, 0);
+      camera.position.lerp(desiredCamPos, 0.08);
+      controls.target.lerp(desiredTarget, 0.08);
+    } else {
+      camera.position.lerp(chapter.camPos, 0.07);
+      controls.target.lerp(chapter.camTarget, 0.07);
+    }
   }
 
-  const targetRotY = chapter.robotRotY + state.smoothLook.x * (state.activeStep === 7 ? 0.02 : 0.1);
+  // 3. Aro 3D enfocador alrededor de la pieza activa
+  if (chapter.highlightRadius > 0) {
+    partFocusRing3D.position.lerp(chapter.anchorLocal, 0.12);
+    const pulseScale = chapter.highlightRadius * (1 + Math.sin(elapsed * 4) * 0.06);
+    partFocusRing3D.scale.setScalar(pulseScale);
+    partFocusRing3D.lookAt(camera.position);
+    focusRingMat.opacity = THREE.MathUtils.lerp(focusRingMat.opacity, 0.55, 0.1);
+  } else {
+    focusRingMat.opacity = THREE.MathUtils.lerp(focusRingMat.opacity, 0, 0.15);
+  }
+
+  const targetRotY = chapter.robotRotY + state.smoothLook.x * (state.activeStep === 7 ? 0.02 : 0.08);
   gimenaRoot.rotation.y = THREE.MathUtils.lerp(gimenaRoot.rotation.y, targetRotY, 0.07);
 
   state.pokeBounce = THREE.MathUtils.lerp(state.pokeBounce, 0, 0.09);
@@ -1126,12 +1191,12 @@ function animate() {
 
   headGroup.position.y = THREE.MathUtils.lerp(
     headGroup.position.y,
-    1.02 + breathY + explode * 0.68 + Math.abs(Math.sin(elapsed * 20)) * state.pokeBounce,
+    1.02 + breathY + explode * 0.62 + Math.abs(Math.sin(elapsed * 20)) * state.pokeBounce,
     0.1
   );
-  leftArmGroup.position.x = THREE.MathUtils.lerp(leftArmGroup.position.x, -1.62 - explode * 0.55, 0.1);
-  rightArmGroup.position.x = THREE.MathUtils.lerp(rightArmGroup.position.x, 1.62 + explode * 0.55, 0.1);
-  feetGroup.position.y = THREE.MathUtils.lerp(feetGroup.position.y, -1.78 - explode * 0.38, 0.1);
+  leftArmGroup.position.x = THREE.MathUtils.lerp(leftArmGroup.position.x, -1.62 - explode * 0.5, 0.1);
+  rightArmGroup.position.x = THREE.MathUtils.lerp(rightArmGroup.position.x, 1.62 + explode * 0.5, 0.1);
+  feetGroup.position.y = THREE.MathUtils.lerp(feetGroup.position.y, -1.78 - explode * 0.35, 0.1);
 
   soundWaveRings.forEach((ring, idx) => {
     if (state.isSpeaking || state.emotion === 'music' || state.activeStep === 3) {
