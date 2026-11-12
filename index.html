@@ -2,9 +2,9 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>GimenAI — 3D Mobile Interactive</title>
-  <meta name="description" content="Explora a Gimena en 3D desde tu celular: pantalla TFT, micrófono INMP441, parlante I2S, partes internas ESP32 y QR en su pantalla." />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>GimenAI — Asistente Robótica 3D</title>
+  <meta name="description" content="Explora en 3D a Gimena (GimenAI): asistente física con ESP32, pantalla TFT ST7789, audio digital I2S, domótica IoT y respaldo en PC." />
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -19,19 +19,19 @@
   </script>
 </head>
 <body>
-  <!-- ESCENARIO 3D FIJO (OPTIMIZADO 60 FPS PARA MÓVIL) -->
+  <!-- ESCENARIO 3D FIJO -->
   <div class="fixed-stage" id="fixedStage">
-    <div id="canvasContainer" class="canvas-container" aria-label="Modelo 3D de Gimena"></div>
+    <div id="canvasContainer" class="canvas-container" aria-label="Modelo 3D interactivo de Gimena"></div>
 
-    <!-- FLECHA SVG DINÁMICA CON PUNTA DE FLECHA SEÑALANDO LA PIEZA 3D -->
-    <svg class="pointer-svg" id="pointerSvg">
+    <!-- FLECHA VECTORIAL DINÁMICA -->
+    <svg class="pointer-svg" id="pointerSvg" aria-hidden="true">
       <defs>
         <linearGradient id="arrowGrad" x1="0%" y1="100%" x2="100%" y2="0%">
-          <stop offset="0%" stop-color="#7cc9ff" stop-opacity="0.95" />
+          <stop offset="0%" stop-color="#7cc9ff" stop-opacity="0.9" />
           <stop offset="100%" stop-color="#00d8ff" stop-opacity="0.95" />
         </linearGradient>
-        <marker id="arrowHead" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto">
-          <path d="M0,1 L7,4 L0,7 Z" fill="#00d8ff" />
+        <marker id="arrowHead" markerWidth="7" markerHeight="7" refX="5.5" refY="3.5" orient="auto">
+          <path d="M0,1 L6,3.5 L0,6 Z" fill="#00d8ff" />
         </marker>
       </defs>
       <path
@@ -39,82 +39,84 @@
         d=""
         fill="none"
         stroke="url(#arrowGrad)"
-        stroke-width="1.8"
+        stroke-width="1.6"
         stroke-dasharray="4 4"
         marker-end="url(#arrowHead)"
       />
     </svg>
 
-    <!-- PUNTO LUMINOSO PRINCIPAL SOBRE LA PIEZA SEÑALADA -->
+    <!-- MARCADOR SOBRE LA PIEZA 3D -->
     <div class="target-beacon" id="targetBeacon">
       <span class="beacon-dot"></span>
       <span class="beacon-ring"></span>
       <span class="beacon-label" id="beaconTag">Pantalla TFT 2.4"</span>
     </div>
 
-    <!-- ETIQUETAS CON FLECHA PARA LAS PARTES INTERNAS (MODO RAYOS-X / DESPIECE) -->
+    <!-- ETIQUETAS INTERACTIVAS DE HARDWARE INTERNO -->
     <div class="internal-pins-layer" id="internalPinsLayer"></div>
   </div>
 
-  <!-- BARRA SUPERIOR ULTRA-MINIMALISTA -->
+  <!-- BARRA SUPERIOR MINIMALISTA -->
   <header class="topbar">
     <div class="brand">
       <span class="dot-live"></span>
       <span class="brand-name">Gimen<b>AI</b></span>
-      <span class="step-counter" id="activeStepIndicator">01/08</span>
+      <span class="step-counter" id="activeStepIndicator">01 / 08</span>
     </div>
 
-    <div class="top-pills">
-      <button class="pill-btn active" data-view="normal">PLA</button>
+    <nav class="top-pills" aria-label="Modos de visualización">
+      <button class="pill-btn active" data-view="normal">Chasis PLA</button>
       <button class="pill-btn" data-view="xray">Rayos-X</button>
-      <button class="pill-btn" data-view="exploded">Interno 3D</button>
-      <button class="pill-btn pill-qr" id="btnToggleQrOnTft">📲 QR</button>
-      <button class="pill-btn pill-photo" id="btnOpenGallery">📸 Fotos</button>
-    </div>
+      <button class="pill-btn" data-view="exploded">Despiece</button>
+      <button class="pill-btn pill-qr" id="btnToggleQrOnTft">QR TFT</button>
+      <button class="pill-btn pill-photo" id="btnOpenGallery">Fotos Reales</button>
+    </nav>
   </header>
 
-  <!-- DOCK INFERIOR COMPACTO PARA MÓVIL -->
+  <!-- INDICADOR DE VOZ DISCRETO -->
+  <div class="voice-toast" id="voiceToast" role="status" aria-live="polite">
+    <span class="mini-wave" id="waveDots"><i></i><i></i><i></i></span>
+    <span id="speechText">Desliza para explorar cada componente de Gimena</span>
+  </div>
+
+  <!-- DOCK INFERIOR MULTIPLATAFORMA -->
   <div class="bottom-dock">
-    <div class="emo-strip">
-      <button class="emo-btn active" data-emotion="happy" aria-label="Feliz">😊</button>
-      <button class="emo-btn" data-emotion="love" aria-label="Amor">😍</button>
-      <button class="emo-btn" data-emotion="surprised" aria-label="Sorpresa">😮</button>
-      <button class="emo-btn" data-emotion="thinking" aria-label="Pensando">🤔</button>
-      <button class="emo-btn" data-emotion="music" aria-label="Música">🎵</button>
-      <button class="emo-btn" data-emotion="sad" aria-label="Triste">🥺</button>
-      <button class="emo-btn" data-emotion="qr" aria-label="QR en TFT">📲</button>
+    <div class="emo-strip" role="group" aria-label="Expresiones de pantalla">
+      <button class="emo-btn active" data-emotion="happy">UwU</button>
+      <button class="emo-btn" data-emotion="love">Amor</button>
+      <button class="emo-btn" data-emotion="surprised">Alerta</button>
+      <button class="emo-btn" data-emotion="thinking">IA</button>
+      <button class="emo-btn" data-emotion="music">Audio</button>
+      <button class="emo-btn" data-emotion="sad">Triste</button>
+      <button class="emo-btn" data-emotion="qr">QR</button>
     </div>
 
     <form id="chatForm" class="micro-chat">
-      <button type="button" class="mic-btn" id="btnVoiceInput" aria-label="Micrófono">🎙️</button>
+      <button type="button" class="mic-btn" id="btnVoiceInput" aria-label="Comando por voz" title="Hablar por micrófono">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/></svg>
+      </button>
       <input
         type="text"
         id="chatInput"
-        placeholder="Pídele algo a Gimena..."
+        placeholder="Escribe o pide una acción (ej. 'Enciende sala')..."
         autocomplete="off"
       />
-      <button type="submit" class="send-btn">→</button>
+      <button type="submit" class="send-btn" aria-label="Enviar">→</button>
     </form>
   </div>
 
-  <!-- SUBTÍTULO DE VOZ FLOTANTE DISCRETO -->
-  <div class="voice-toast" id="voiceToast">
-    <span class="mini-wave" id="waveDots"><i></i><i></i><i></i></span>
-    <span id="speechText">Desliza hacia abajo para explorar mis partes →</span>
-  </div>
-
-  <!-- SCROLLYTELLING MINIMALISTA (TARJETAS PEQUEÑAS QUE DEJAN VER EL 3D ARRIBA) -->
+  <!-- RECORRIDO SCROLLYTELLING -->
   <main class="scrolly-track">
     <!-- 01: FRENTE -->
     <section class="scroll-step active" data-step="0">
       <article class="mini-card">
         <div class="card-head">
-          <span class="tag-step">01 · ASISTENTE FÍSICA IA</span>
-          <span class="tag-part">Vista 360°</span>
+          <span class="tag-step">01 / ASISTENTE FÍSICA</span>
+          <span class="tag-part">Vista General</span>
         </div>
         <h1>Hola, soy <span>Gimena</span></h1>
         <p class="card-sub">
-          Desliza suavemente: cada paso señala con una <strong>flecha en vivo</strong> mis partes externas e internas.
+          Desliza para inspeccionar mi arquitectura física, mis periféricos y mi electrónica interna señalada en tiempo real.
         </p>
         <div class="chip-row">
           <span class="micro-chip">Gemini 3.5</span>
@@ -123,9 +125,9 @@
           <span class="micro-chip">IoT + PC Backup</span>
         </div>
         <div class="card-btns">
-          <button class="btn-xs" id="btnHeroSpeak">🔊 Escuchar voz</button>
-          <button class="btn-xs btn-xs-ghost" data-trigger="jump-internals">🔍 Ver interior</button>
-          <button class="btn-xs btn-xs-ghost" data-trigger="jump-qr">📲 QR en TFT</button>
+          <button class="btn-xs" id="btnHeroSpeak">Escuchar presentación</button>
+          <button class="btn-xs btn-xs-ghost" data-trigger="jump-internals">Ver interior</button>
+          <button class="btn-xs btn-xs-ghost" data-trigger="jump-qr">QR en TFT</button>
         </div>
       </article>
     </section>
@@ -134,17 +136,17 @@
     <section class="scroll-step" data-step="1">
       <article class="mini-card">
         <div class="card-head">
-          <span class="tag-step">02 · ROSTRO DIGITAL</span>
+          <span class="tag-step">02 / INTERFAZ VISUAL</span>
           <span class="tag-part">↗ Pantalla TFT ST7789</span>
         </div>
         <h2>Pantalla a color <span>2.4" (320×240)</span></h2>
         <div class="do-dont-mini">
-          <p class="do-line"><b>✓ Hace:</b> 7 emociones vivas, mueve la boca <code>w</code> al hablar y proyecta mi QR.</p>
-          <p class="dont-line"><b>✕ No hace:</b> No es táctil ni reproduce video pesado; se dibuja por SPI.</p>
+          <p class="do-line"><b>Función:</b> Renderiza 7 estados de ánimo, sincronización labial y proyección de QR.</p>
+          <p class="dont-line"><b>Límite:</b> No es un panel táctil ni reproduce video pesado; usa primitivas SPI.</p>
         </div>
         <div class="card-btns">
-          <button class="btn-xs" data-trigger="cycle-emotions">✨ Probar 7 emociones</button>
-          <button class="btn-xs btn-xs-ghost" data-trigger="swap-face">🎨 Pixel / Anime</button>
+          <button class="btn-xs" data-trigger="cycle-emotions">Probar expresiones</button>
+          <button class="btn-xs btn-xs-ghost" data-trigger="swap-face">Alternar Pixel / Anime</button>
         </div>
       </article>
     </section>
@@ -153,16 +155,16 @@
     <section class="scroll-step" data-step="2">
       <article class="mini-card">
         <div class="card-head">
-          <span class="tag-step">03 · OÍDO DIGITAL</span>
+          <span class="tag-step">03 / CAPTURA ACÚSTICA</span>
           <span class="tag-part">↗ Micrófono INMP441</span>
         </div>
-        <h2>Orificio derecho <span>I2S 24-bit</span></h2>
+        <h2>Entrada digital <span>I2S 24-bit</span></h2>
         <div class="do-dont-mini">
-          <p class="do-line"><b>✓ Hace:</b> Escucha comandos naturales y si falla la nube el PC traduce el audio (STT).</p>
-          <p class="dont-line"><b>✕ No hace:</b> No graba en secreto 24/7 ni guarda tu voz en servidores.</p>
+          <p class="do-line"><b>Función:</b> Captura voz con alta fidelidad; si falla la API STT en la nube, el PC transcribe localmente.</p>
+          <p class="dont-line"><b>Límite:</b> No realiza grabaciones continuas en segundo plano ni almacena audio privado.</p>
         </div>
         <div class="card-btns">
-          <button class="btn-xs" data-trigger="test-mic">🎙️ Probar oído digital</button>
+          <button class="btn-xs" data-trigger="test-mic">Simular captura de voz</button>
         </div>
       </article>
     </section>
@@ -171,16 +173,16 @@
     <section class="scroll-step" data-step="3">
       <article class="mini-card">
         <div class="card-head">
-          <span class="tag-step">04 · VOZ FRONTAL</span>
-          <span class="tag-part">↗ 19 Perforaciones + Amp</span>
+          <span class="tag-step">04 / SALIDA DE AUDIO</span>
+          <span class="tag-part">↗ 19 Perforaciones + I2S</span>
         </div>
         <h2>Parlante con <span>MAX98357A</span></h2>
         <div class="do-dont-mini">
-          <p class="do-line"><b>✓ Hace:</b> Proyecta voz digital clara; si cae la API TTS, suena por el PC (<code>SalomeNeural</code>).</p>
-          <p class="dont-line"><b>✕ No hace:</b> Nunca se queda muda ni es un bafle de alta potencia para fiestas.</p>
+          <p class="do-line"><b>Función:</b> Reproduce síntesis de voz por bus I2S y conmuta al parlante del PC si cae la nube.</p>
+          <p class="dont-line"><b>Límite:</b> Nunca queda en silencio ante fallos de red; optimizado para voz de escritorio.</p>
         </div>
         <div class="card-btns">
-          <button class="btn-xs" data-trigger="test-speaker">🔊 Emitir ondas 3D</button>
+          <button class="btn-xs" data-trigger="test-speaker">Emitir ondas de audio</button>
         </div>
       </article>
     </section>
@@ -189,17 +191,17 @@
     <section class="scroll-step" data-step="4">
       <article class="mini-card">
         <div class="card-head">
-          <span class="tag-step">05 · CHASIS LATERAL</span>
+          <span class="tag-step">05 / CONSTRUCCIÓN MECÁNICA</span>
           <span class="tag-part">↗ Unión 2 Mitades + Brazo</span>
         </div>
-        <h2>Ensamble en <span>PLA Negro Brillante</span></h2>
+        <h2>Chasis en <span>PLA Negro Brillante</span></h2>
         <div class="thumb-strip">
-          <img src="assets/gimena-side.jpg" alt="Perfil lateral real" />
-          <span>Costura central de las 2 carcasas 3D, hombro cilíndrico y pies dobles estables.</span>
+          <img src="assets/gimena-side.jpg" alt="Perfil lateral real de Gimena" loading="lazy" />
+          <span>Unión central de las 2 carcasas impresas en 3D, eje cilíndrico lateral y base estable.</span>
         </div>
         <div class="do-dont-mini">
-          <p class="do-line"><b>✓ Hace:</b> Protege los circuitos y se abre en 2 mitades para mantenimiento.</p>
-          <p class="dont-line"><b>✕ No hace:</b> No camina ni tiene servomotores físicos en brazos o pies.</p>
+          <p class="do-line"><b>Función:</b> Aloja los módulos electrónicos y permite apertura rápida para mantenimiento.</p>
+          <p class="dont-line"><b>Límite:</b> Estructura estacionaria de escritorio; no incorpora servomotores de locomoción.</p>
         </div>
       </article>
     </section>
@@ -208,42 +210,42 @@
     <section class="scroll-step" data-step="5">
       <article class="mini-card">
         <div class="card-head">
-          <span class="tag-step">06 · VISTA TRASERA</span>
+          <span class="tag-step">06 / DISIPACIÓN Y ENERGÍA</span>
           <span class="tag-part">↗ 5 Ranuras + Grabado</span>
         </div>
         <h2>Sello <span>«Gimena»</span> y puerto USB</h2>
         <div class="thumb-strip">
-          <img src="assets/gimena-back.jpg" alt="Espalda real de Gimena" />
-          <span>5 rejillas verticales de ventilación, logo grabado y salida inferior del cable USB.</span>
+          <img src="assets/gimena-back.jpg" alt="Espalda real de Gimena" loading="lazy" />
+          <span>5 ranuras superiores de ventilación, grabado en bajo relieve y salida inferior USB.</span>
         </div>
         <div class="do-dont-mini">
-          <p class="do-line"><b>✓ Hace:</b> Refrigera el ESP32 y al conectar el USB al PC levanta el servidor web solo.</p>
-          <p class="dont-line"><b>✕ No hace:</b> No usa batería interna que se agote; energía continua por USB.</p>
+          <p class="do-line"><b>Función:</b> Evacúa el calor del ESP32 y lanza automáticamente el servidor del PC al conectarse.</p>
+          <p class="dont-line"><b>Límite:</b> Alimentación continua por cable USB; prescinde de baterías degradables.</p>
         </div>
       </article>
     </section>
 
-    <!-- 07: PARTES INTERNAS (RAYOS-X / DESPIECE 3D CON FLECHAS INTERNAS) -->
+    <!-- 07: PARTES INTERNAS (RAYOS-X / DESPIECE 3D) -->
     <section class="scroll-step" data-step="6" id="stepInternalsSection">
       <article class="mini-card">
         <div class="card-head">
-          <span class="tag-step">07 · ARQUITECTURA INTERNA & IOT</span>
-          <span class="tag-part">↗ Toca cada chip interno</span>
+          <span class="tag-step">07 / ELECTRÓNICA INTERNA & IOT</span>
+          <span class="tag-part">↗ Selecciona un módulo</span>
         </div>
         <h2>Interior <span>Rayos-X</span> y Domótica</h2>
         <div class="iot-strip">
-          <button class="iot-chip" data-device="sala">💡 Sala <b>OFF</b></button>
-          <button class="iot-chip" data-device="cocina">🍳 Cocina <b>OFF</b></button>
-          <button class="iot-chip" data-device="ventilador">🌀 Ventilador <b>OFF</b></button>
-          <button class="iot-chip" data-device="tuya">🔌 Tuya <b>OFF</b></button>
+          <button class="iot-chip" data-device="sala">Luz Sala <b>OFF</b></button>
+          <button class="iot-chip" data-device="cocina">Luz Cocina <b>OFF</b></button>
+          <button class="iot-chip" data-device="ventilador">Ventilador <b>OFF</b></button>
+          <button class="iot-chip" data-device="tuya">Enchufe Tuya <b>OFF</b></button>
         </div>
         <div class="do-dont-mini">
-          <p class="do-line"><b>✓ Hace:</b> ESP32 Dual-Core controla relés (<code>GPIO 19/21/22</code>) + Tuya Cloud + Respaldo PC.</p>
-          <p class="dont-line"><b>✕ No hace:</b> Jamás queda fuera de línea si falla una clave o cuota en la nube.</p>
+          <p class="do-line"><b>Función:</b> Controla relés (<code>GPIO 19/21/22</code>), Tuya Cloud y respaldo automático TTS/STT en PC.</p>
+          <p class="dont-line"><b>Límite:</b> Resiliencia total ante caídas de cuota en las APIs externas.</p>
         </div>
         <div class="card-btns">
-          <button class="btn-xs" data-trigger="toggle-exploded">🔩 Abrir / Cerrar Despiece 3D</button>
-          <button class="btn-xs btn-xs-ghost" id="btnSimulateFallback">🛡️ Simular Rescate PC</button>
+          <button class="btn-xs" data-trigger="toggle-exploded">Alternar Despiece 3D</button>
+          <button class="btn-xs btn-xs-ghost" id="btnSimulateFallback">Simular Rescate PC</button>
         </div>
       </article>
     </section>
@@ -252,36 +254,36 @@
     <section class="scroll-step" data-step="7" id="stepQrSection">
       <article class="mini-card qr-mini-card">
         <div class="card-head">
-          <span class="tag-step">08 · ¡ESCANÉAME EN VIVO!</span>
-          <span class="tag-part">↗ QR en mi Pantalla TFT</span>
+          <span class="tag-step">08 / ACCESO MÓVIL DIRECTO</span>
+          <span class="tag-part">↗ QR en Pantalla TFT</span>
         </div>
-        <h2>Apunta a mi <span>rostro 3D</span></h2>
+        <h2>Escanea mi <span>pantalla 3D</span></h2>
         <div class="qr-compact-row">
-          <img src="assets/qr-gimenai-web.png" alt="QR GimenAI" class="qr-mini-img" />
+          <img src="assets/qr-gimenai-web.png" alt="Código QR GimenAI" class="qr-mini-img" />
           <div class="qr-compact-text">
-            <span class="live-badge">● GITHUB PAGES ACTIVO</span>
-            <p>Escanea el QR directo en la pantalla TFT 3D de Gimena arriba o toca para ampliarlo.</p>
+            <span class="live-badge">PRODUCCIÓN ACTIVA</span>
+            <p>Apunta con la cámara de tu teléfono a la pantalla TFT del modelo 3D o abre el visor completo.</p>
           </div>
         </div>
         <div class="card-btns">
-          <button class="btn-xs" id="btnOpenQrModal">📲 Ampliar QR Pantalla Completa</button>
-          <a href="assets/qr-gimenai-web.png" download="QR-GimenAI.png" class="btn-xs btn-xs-ghost" style="text-decoration:none;">⬇️ Guardar QR</a>
+          <button class="btn-xs" id="btnOpenQrModal">Ampliar QR</button>
+          <a href="assets/qr-gimenai-web.png" download="QR-GimenAI.png" class="btn-xs btn-xs-ghost" style="text-decoration:none;">Descargar PNG</a>
         </div>
       </article>
     </section>
   </main>
 
-  <!-- MODAL QR GIGANTE PARA ESCANEAR AL PASAR -->
-  <div class="modal-backdrop hidden" id="qrKioskModal">
+  <!-- MODAL QR PANTALLA COMPLETA -->
+  <div class="modal-backdrop hidden" id="qrKioskModal" role="dialog" aria-modal="true">
     <div class="modal-sheet">
       <div class="sheet-top">
-        <span>📲 Escanea para abrir a Gimena 3D en tu celular</span>
-        <button class="btn-close-sheet" id="btnCloseQrModal">✕</button>
+        <span>Acceso móvil — GimenAI 3D</span>
+        <button class="btn-close-sheet" id="btnCloseQrModal" aria-label="Cerrar">✕</button>
       </div>
       <div class="qr-sheet-body">
         <div class="qr-laser-box">
           <span class="laser-bar"></span>
-          <img src="assets/qr-gimenai-web.png" alt="QR Oficial GimenAI" />
+          <img src="assets/qr-gimenai-web.png" alt="Código QR Oficial GimenAI" />
         </div>
         <code>https://balmes2baxter.github.io/GimenAI-web/</code>
       </div>
@@ -289,24 +291,24 @@
   </div>
 
   <!-- MODAL 3 FOTOS REALES -->
-  <div class="modal-backdrop hidden" id="galleryModal">
+  <div class="modal-backdrop hidden" id="galleryModal" role="dialog" aria-modal="true">
     <div class="modal-sheet">
       <div class="sheet-top">
-        <span>📸 Fotos Reales de Gimena (Impresa en 3D)</span>
-        <button class="btn-close-sheet" id="btnCloseGallery">✕</button>
+        <span>Fotografías Reales del Prototipo Físico</span>
+        <button class="btn-close-sheet" id="btnCloseGallery" aria-label="Cerrar">✕</button>
       </div>
       <div class="gallery-scroll">
         <figure class="gal-card">
-          <img src="assets/gimena-real.jpg" alt="Frente real" loading="lazy" />
-          <figcaption><b>1. Frente:</b> TFT 2.4" UwU, ranura, mic INMP441 y 19 agujeros.</figcaption>
+          <img src="assets/gimena-real.jpg" alt="Frente real de Gimena" loading="lazy" />
+          <figcaption><b>01. Frente:</b> Pantalla TFT 2.4", ranura inferior, micrófono INMP441 y 19 perforaciones.</figcaption>
         </figure>
         <figure class="gal-card">
-          <img src="assets/gimena-side.jpg" alt="Lado real" loading="lazy" />
-          <figcaption><b>2. Lado:</b> Unión de las 2 mitades PLA, brazo cilíndrico y pies.</figcaption>
+          <img src="assets/gimena-side.jpg" alt="Lado real de Gimena" loading="lazy" />
+          <figcaption><b>02. Lateral:</b> Costura de las 2 mitades en PLA negro, brazo sobre eje cilíndrico y pies.</figcaption>
         </figure>
         <figure class="gal-card">
-          <img src="assets/gimena-back.jpg" alt="Espalda real" loading="lazy" />
-          <figcaption><b>3. Espalda:</b> 5 ranuras, grabado «Gimena» y salida USB blanca.</figcaption>
+          <img src="assets/gimena-back.jpg" alt="Espalda real de Gimena" loading="lazy" />
+          <figcaption><b>03. Espalda:</b> 5 ranuras verticales, grabado «Gimena» y puerto trasero para cable USB.</figcaption>
         </figure>
       </div>
     </div>

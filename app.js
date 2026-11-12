@@ -2,7 +2,9 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 
-const isMobileScreen = () => window.innerWidth < 860;
+// Detecta si el layout es apilado vertical (móvil retrato) o dividido lateral (tablet, desktop o móvil horizontal)
+const isPortraitMobile = () =>
+  window.innerWidth < 768 && !(window.innerHeight <= 540 && window.innerWidth > window.innerHeight);
 
 // ============================================================================
 // ESTADO GLOBAL
@@ -24,6 +26,8 @@ const state = {
   userOrbiting: false,
   tftDirty: true,
   lastTftUpdate: 0,
+  viewportW: window.innerWidth,
+  viewportH: window.innerHeight,
   devices: {
     sala: false,
     cocina: false,
@@ -42,12 +46,12 @@ qrImage.onload = () => {
 };
 
 // ============================================================================
-// CAPÍTULOS CON ENCUADRE POR PIEZA (TRANSICIONES ÁGILES)
+// CAPÍTULOS CON ENCUADRE POR PIEZA (PORTRAIT MÓVIL Y SPLIT VIEW)
 // ============================================================================
 const SCROLL_CHAPTERS = [
   {
     step: 0,
-    counter: '01/08',
+    counter: '01 / 08',
     beaconLabel: 'Gimena · Vista General',
     mobileScale: 0.44,
     mobileFocusY: 0.05,
@@ -63,7 +67,7 @@ const SCROLL_CHAPTERS = [
   },
   {
     step: 1,
-    counter: '02/08',
+    counter: '02 / 08',
     beaconLabel: 'Pantalla TFT 2.4" (320×240)',
     mobileScale: 0.58,
     mobileFocusY: 1.08,
@@ -79,7 +83,7 @@ const SCROLL_CHAPTERS = [
   },
   {
     step: 2,
-    counter: '03/08',
+    counter: '03 / 08',
     beaconLabel: 'Micrófono Digital INMP441',
     mobileScale: 0.64,
     mobileFocusY: 0.32,
@@ -95,7 +99,7 @@ const SCROLL_CHAPTERS = [
   },
   {
     step: 3,
-    counter: '04/08',
+    counter: '04 / 08',
     beaconLabel: '19 Perforaciones + Parlante I2S',
     mobileScale: 0.58,
     mobileFocusY: -0.72,
@@ -111,7 +115,7 @@ const SCROLL_CHAPTERS = [
   },
   {
     step: 4,
-    counter: '05/08',
+    counter: '05 / 08',
     beaconLabel: 'Unión 2 Mitades PLA + Brazo',
     mobileScale: 0.48,
     mobileFocusY: -0.35,
@@ -127,7 +131,7 @@ const SCROLL_CHAPTERS = [
   },
   {
     step: 5,
-    counter: '06/08',
+    counter: '06 / 08',
     beaconLabel: '5 Ranuras + Grabado "Gimena"',
     mobileScale: 0.54,
     mobileFocusY: 0.55,
@@ -143,7 +147,7 @@ const SCROLL_CHAPTERS = [
   },
   {
     step: 6,
-    counter: '07/08',
+    counter: '07 / 08',
     beaconLabel: 'Interior Rayos-X + ESP32',
     mobileScale: 0.44,
     mobileFocusY: -0.1,
@@ -159,8 +163,8 @@ const SCROLL_CHAPTERS = [
   },
   {
     step: 7,
-    counter: '08/08',
-    beaconLabel: '📲 ¡Escanea el QR en mi TFT!',
+    counter: '08 / 08',
+    beaconLabel: 'QR Directo en Pantalla TFT',
     mobileScale: 0.66,
     mobileFocusY: 1.12,
     mobileCamZ: 5.5,
@@ -176,7 +180,7 @@ const SCROLL_CHAPTERS = [
 ];
 
 // ============================================================================
-// PRE-CACHÉ DE SPRITES DE OJOS PIXEL-ART (CERO BUCLES PESADOS EN CADA FRAME)
+// PRE-CACHÉ DE SPRITES DE OJOS PIXEL-ART (CERO BUCLES EN EL RENDER LOOP)
 // ============================================================================
 const P_SCALE = 4;
 
@@ -258,17 +262,18 @@ function createSoftShadowTexture() {
 }
 
 // ============================================================================
-// PANTALLA TFT 320x240 ULTRARRÁPIDA (CON SPRITES PRE-CACHEADOS)
+// PANTALLA TFT 320x240 ULTRARRÁPIDA
 // ============================================================================
 const tftCanvas = document.createElement('canvas');
 tftCanvas.width = 320;
 tftCanvas.height = 240;
-const tftCtx = tftCanvas.getContext('2d');
+const tftCtx = tftCanvas.getContext('2d', { alpha: false });
 
 const tftTexture = new THREE.CanvasTexture(tftCanvas);
 tftTexture.colorSpace = THREE.SRGBColorSpace;
 tftTexture.minFilter = THREE.LinearFilter;
 tftTexture.magFilter = THREE.NearestFilter;
+tftTexture.generateMipmaps = false;
 
 function pRect(px, py, pw, ph, color) {
   tftCtx.fillStyle = color;
@@ -355,8 +360,7 @@ function renderQrModeOnTft(timeSec, lx, ly) {
 }
 
 function renderTFTScreen(timeSec) {
-  // Limitar actualización del canvas TFT a ~22 FPS para máxima agilidad en móvil
-  if (!state.tftDirty && timeSec - state.lastTftUpdate < 0.045) return;
+  if (!state.tftDirty && timeSec - state.lastTftUpdate < 0.048) return;
   state.lastTftUpdate = timeSec;
   state.tftDirty = false;
 
@@ -422,34 +426,33 @@ function renderTFTScreen(timeSec) {
 }
 
 // ============================================================================
-// ESCENA THREE.JS ULTRALIGERA
+// MOTOR THREE.JS OPTIMIZADO (LOW-POLY, INSTANCING Y MATRICES ESTÁTICAS)
 // ============================================================================
 const container = document.getElementById('canvasContainer');
 const scene = new THREE.Scene();
 
-const camera = new THREE.PerspectiveCamera(36, window.innerWidth / window.innerHeight, 0.1, 50);
+const camera = new THREE.PerspectiveCamera(36, state.viewportW / state.viewportH, 0.1, 45);
 
 const renderer = new THREE.WebGLRenderer({
-  antialias: !isMobileScreen(),
+  antialias: !isPortraitMobile(),
   alpha: true,
   powerPreference: 'high-performance',
+  stencil: false,
+  depth: true,
 });
-renderer.setSize(window.innerWidth, window.innerHeight);
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, isMobileScreen() ? 1.25 : 1.75));
+renderer.setSize(state.viewportW, state.viewportH);
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, isPortraitMobile() ? 1.25 : 1.75));
 container.appendChild(renderer.domElement);
 
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
-controls.dampingFactor = 0.1;
+controls.dampingFactor = 0.12;
 controls.enableZoom = false;
 controls.enablePan = false;
-
-if (isMobileScreen()) {
-  controls.touches = {
-    ONE: THREE.TOUCH.ROTATE,
-    TWO: THREE.TOUCH.DOLLY_PAN,
-  };
-}
+controls.touches = {
+  ONE: THREE.TOUCH.ROTATE,
+  TWO: THREE.TOUCH.DOLLY_PAN,
+};
 
 controls.addEventListener('start', () => {
   state.userOrbiting = true;
@@ -457,16 +460,16 @@ controls.addEventListener('start', () => {
 controls.addEventListener('end', () => {
   setTimeout(() => {
     state.userOrbiting = false;
-  }, 1000);
+  }, 900);
 });
 
-scene.add(new THREE.AmbientLight(0xdbeafe, 1.25));
+scene.add(new THREE.AmbientLight(0xdbeafe, 1.3));
 
-const keyLight = new THREE.DirectionalLight(0xffffff, 2.1);
+const keyLight = new THREE.DirectionalLight(0xffffff, 2.0);
 keyLight.position.set(4, 6, 5);
 scene.add(keyLight);
 
-const backLight = new THREE.DirectionalLight(0x93c5fd, 1.6);
+const backLight = new THREE.DirectionalLight(0x93c5fd, 1.55);
 backLight.position.set(-3.5, 4, -5.5);
 scene.add(backLight);
 
@@ -474,7 +477,6 @@ const roomSmartLight = new THREE.PointLight(0xfbbf24, 0, 11);
 roomSmartLight.position.set(-2, 3.5, 3);
 scene.add(roomSmartLight);
 
-// Material ligero MeshStandardMaterial en lugar de PhysicalMaterial pesado
 const blackPlaMaterial = new THREE.MeshStandardMaterial({
   color: 0x141821,
   roughness: 0.25,
@@ -486,15 +488,20 @@ const blackPlaMaterial = new THREE.MeshStandardMaterial({
 const darkCavityMaterial = new THREE.MeshBasicMaterial({ color: 0x040508 });
 const seamLineMaterial = new THREE.MeshBasicMaterial({ color: 0x05070b });
 
-// ============================================================================
-// CONSTRUCCIÓN DE GIMENA 3D (GEOMETRÍA OPTIMIZADA DE BAJOS POLÍGONOS)
-// ============================================================================
+// Congela la matriz de un mesh estático para ahorrar cálculos de CPU en cada frame
+function addStatic(parent, mesh) {
+  mesh.updateMatrix();
+  mesh.matrixAutoUpdate = false;
+  parent.add(mesh);
+  return mesh;
+}
+
 const gimenaRoot = new THREE.Group();
-const initialScale = isMobileScreen() ? SCROLL_CHAPTERS[0].mobileScale : SCROLL_CHAPTERS[0].desktopScale;
+const initialScale = isPortraitMobile() ? SCROLL_CHAPTERS[0].mobileScale : SCROLL_CHAPTERS[0].desktopScale;
 gimenaRoot.scale.setScalar(initialScale);
 scene.add(gimenaRoot);
 
-const focusRingGeo = new THREE.RingGeometry(0.88, 0.94, 32);
+const focusRingGeo = new THREE.RingGeometry(0.88, 0.94, 28);
 const focusRingMat = new THREE.MeshBasicMaterial({
   color: 0x00d8ff,
   transparent: true,
@@ -515,19 +522,19 @@ const shadowPlane = new THREE.Mesh(
 );
 shadowPlane.rotation.x = -Math.PI / 2;
 shadowPlane.position.y = -2.02;
-gimenaRoot.add(shadowPlane);
+addStatic(gimenaRoot, shadowPlane);
 
 // 1. CABEZA
 const headGroup = new THREE.Group();
 headGroup.position.set(0, 1.02, 0);
 gimenaRoot.add(headGroup);
 
-headGroup.add(new THREE.Mesh(new RoundedBoxGeometry(2.38, 2.24, 1.78, 2, 0.11), blackPlaMaterial));
-headGroup.add(new THREE.Mesh(new THREE.BoxGeometry(2.405, 2.25, 0.026), seamLineMaterial));
+addStatic(headGroup, new THREE.Mesh(new RoundedBoxGeometry(2.38, 2.24, 1.78, 2, 0.11), blackPlaMaterial));
+addStatic(headGroup, new THREE.Mesh(new THREE.BoxGeometry(2.405, 2.25, 0.026), seamLineMaterial));
 
 const bezelRecessMesh = new THREE.Mesh(new THREE.BoxGeometry(1.66, 1.26, 0.1), darkCavityMaterial);
 bezelRecessMesh.position.set(0, 0.12, 0.86);
-headGroup.add(bezelRecessMesh);
+addStatic(headGroup, bezelRecessMesh);
 
 const tftScreenMesh = new THREE.Mesh(
   new THREE.PlaneGeometry(1.56, 1.17),
@@ -535,34 +542,37 @@ const tftScreenMesh = new THREE.Mesh(
 );
 tftScreenMesh.position.set(0, 0.12, 0.925);
 tftScreenMesh.name = 'screen';
-headGroup.add(tftScreenMesh);
+addStatic(headGroup, tftScreenMesh);
 
 const frontSlotMesh = new THREE.Mesh(new THREE.BoxGeometry(1.06, 0.085, 0.06), darkCavityMaterial);
 frontSlotMesh.position.set(-0.16, -0.76, 0.87);
-headGroup.add(frontSlotMesh);
+addStatic(headGroup, frontSlotMesh);
 
 const micRimMesh = new THREE.Mesh(
   new THREE.RingGeometry(0.055, 0.088, 16),
   new THREE.MeshBasicMaterial({ color: 0x475569, side: THREE.DoubleSide })
 );
 micRimMesh.position.set(0.62, -0.76, 0.906);
-headGroup.add(micRimMesh);
+addStatic(headGroup, micRimMesh);
 
 const micHoleMesh = new THREE.Mesh(new THREE.CircleGeometry(0.055, 16), darkCavityMaterial);
 micHoleMesh.position.set(0.62, -0.76, 0.904);
 micHoleMesh.name = 'mic';
-headGroup.add(micHoleMesh);
+addStatic(headGroup, micHoleMesh);
 
-// Espalda: 5 ranuras verticales + Grabado "Gimena"
-const backVentGroup = new THREE.Group();
-backVentGroup.position.set(0, 0.36, -0.892);
-headGroup.add(backVentGroup);
-const slotGeo = new THREE.BoxGeometry(0.11, 0.42, 0.05);
-for (let i = -2; i <= 2; i++) {
-  const slot = new THREE.Mesh(slotGeo, darkCavityMaterial);
-  slot.position.set(i * 0.27, 0, 0);
-  backVentGroup.add(slot);
+// Espalda: 5 ranuras verticales en 1 sola InstancedMesh + Grabado "Gimena"
+const slotInstanced = new THREE.InstancedMesh(
+  new THREE.BoxGeometry(0.11, 0.42, 0.05),
+  darkCavityMaterial,
+  5
+);
+const dummy = new THREE.Object3D();
+for (let i = 0; i < 5; i++) {
+  dummy.position.set((i - 2) * 0.27, 0.36, -0.892);
+  dummy.updateMatrix();
+  slotInstanced.setMatrixAt(i, dummy.matrix);
 }
+addStatic(headGroup, slotInstanced);
 
 const gimenaLogoPlane = new THREE.Mesh(
   new THREE.PlaneGeometry(1.55, 0.48),
@@ -570,21 +580,21 @@ const gimenaLogoPlane = new THREE.Mesh(
 );
 gimenaLogoPlane.position.set(0, -0.42, -0.895);
 gimenaLogoPlane.rotation.y = Math.PI;
-headGroup.add(gimenaLogoPlane);
+addStatic(headGroup, gimenaLogoPlane);
 
 // 2. TORSO
 const torsoGroup = new THREE.Group();
 torsoGroup.position.set(0, -0.82, 0);
-gimenaRoot.add(torsoGroup);
+addStatic(gimenaRoot, torsoGroup);
 
-torsoGroup.add(new THREE.Mesh(new RoundedBoxGeometry(3.16, 1.52, 2.02, 2, 0.11), blackPlaMaterial));
-torsoGroup.add(new THREE.Mesh(new THREE.BoxGeometry(3.185, 1.53, 0.026), seamLineMaterial));
+addStatic(torsoGroup, new THREE.Mesh(new RoundedBoxGeometry(3.16, 1.52, 2.02, 2, 0.11), blackPlaMaterial));
+addStatic(torsoGroup, new THREE.Mesh(new THREE.BoxGeometry(3.185, 1.53, 0.026), seamLineMaterial));
 
 const neckCollarMesh = new THREE.Mesh(new THREE.BoxGeometry(2.54, 0.14, 1.88), blackPlaMaterial);
 neckCollarMesh.position.set(0, 0.78, 0);
-torsoGroup.add(neckCollarMesh);
+addStatic(torsoGroup, neckCollarMesh);
 
-// 19 perforaciones del parlante en 1 sola llamada de dibujo (InstancedMesh)
+// 19 perforaciones del parlante en 1 sola InstancedMesh
 const holeCoords = [[0, 0]];
 for (let i = 0; i < 6; i++) {
   const a = (i * Math.PI) / 3;
@@ -599,18 +609,18 @@ const holeInstanced = new THREE.InstancedMesh(
   darkCavityMaterial,
   holeCoords.length
 );
-const dummy = new THREE.Object3D();
 holeCoords.forEach(([hx, hy], idx) => {
   dummy.position.set(hx, hy + 0.06, 1.012);
   dummy.updateMatrix();
   holeInstanced.setMatrixAt(idx, dummy.matrix);
 });
-torsoGroup.add(holeInstanced);
+addStatic(torsoGroup, holeInstanced);
 
 const soundWaveRings = [];
+const ringGeoShared = new THREE.RingGeometry(0.18, 0.21, 20);
 for (let i = 0; i < 2; i++) {
   const ring = new THREE.Mesh(
-    new THREE.RingGeometry(0.18, 0.21, 20),
+    ringGeoShared,
     new THREE.MeshBasicMaterial({ color: 0x00d8ff, transparent: true, opacity: 0, side: THREE.DoubleSide })
   );
   ring.position.set(0, 0.06, 1.04);
@@ -620,21 +630,24 @@ for (let i = 0; i < 2; i++) {
 
 const usbPortCutoutMesh = new THREE.Mesh(new THREE.BoxGeometry(0.36, 0.26, 0.12), darkCavityMaterial);
 usbPortCutoutMesh.position.set(0, -0.42, -0.98);
-torsoGroup.add(usbPortCutoutMesh);
+addStatic(torsoGroup, usbPortCutoutMesh);
 
-// 3. BRAZOS LATERALES
+// 3. BRAZOS LATERALES (Geometrías compartidas)
+const sharedShoulderGeo = new THREE.CylinderGeometry(0.22, 0.22, 0.18, 12);
+const sharedArmGeo = new RoundedBoxGeometry(0.36, 0.68, 0.38, 2, 0.08);
+
 function createSideArm(isLeft) {
   const group = new THREE.Group();
   const sign = isLeft ? -1 : 1;
   group.position.set(sign * 1.62, -0.86, 0.36);
 
-  const shoulderPeg = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.22, 0.18, 12), blackPlaMaterial);
+  const shoulderPeg = new THREE.Mesh(sharedShoulderGeo, blackPlaMaterial);
   shoulderPeg.rotation.z = Math.PI / 2;
-  group.add(shoulderPeg);
+  addStatic(group, shoulderPeg);
 
-  const armBlock = new THREE.Mesh(new RoundedBoxGeometry(0.36, 0.68, 0.38, 2, 0.08), blackPlaMaterial);
+  const armBlock = new THREE.Mesh(sharedArmGeo, blackPlaMaterial);
   armBlock.position.set(sign * 0.16, -0.04, 0);
-  group.add(armBlock);
+  addStatic(group, armBlock);
   return group;
 }
 
@@ -643,19 +656,21 @@ const rightArmGroup = createSideArm(false);
 gimenaRoot.add(leftArmGroup);
 gimenaRoot.add(rightArmGroup);
 
-// 4. PIES
+// 4. PIES (Geometrías compartidas)
 const feetGroup = new THREE.Group();
 feetGroup.position.set(0, -1.78, 0.14);
 gimenaRoot.add(feetGroup);
 
+const sharedFootGeo = new RoundedBoxGeometry(0.92, 0.46, 1.62, 2, 0.08);
+const sharedFootSeamGeo = new THREE.BoxGeometry(0.94, 0.47, 0.026);
 [-0.78, 0.78].forEach((fx) => {
-  const foot = new THREE.Mesh(new RoundedBoxGeometry(0.92, 0.46, 1.62, 2, 0.08), blackPlaMaterial);
+  const foot = new THREE.Mesh(sharedFootGeo, blackPlaMaterial);
   foot.position.set(fx, 0, 0);
-  feetGroup.add(foot);
+  addStatic(feetGroup, foot);
 
-  const footSeam = new THREE.Mesh(new THREE.BoxGeometry(0.94, 0.47, 0.026), seamLineMaterial);
+  const footSeam = new THREE.Mesh(sharedFootSeamGeo, seamLineMaterial);
   footSeam.position.set(fx, 0, -0.14);
-  feetGroup.add(footSeam);
+  addStatic(feetGroup, footSeam);
 });
 
 // 5. CABLE USB BLANCO TRASERO
@@ -665,23 +680,24 @@ const usbCurve = new THREE.CatmullRomCurve3([
   new THREE.Vector3(0.65, -1.88, -2.05),
   new THREE.Vector3(1.45, -1.96, -2.85),
 ]);
-gimenaRoot.add(
+addStatic(
+  gimenaRoot,
   new THREE.Mesh(
-    new THREE.TubeGeometry(usbCurve, 16, 0.055, 8, false),
+    new THREE.TubeGeometry(usbCurve, 14, 0.055, 8, false),
     new THREE.MeshBasicMaterial({ color: 0xf1f5f9 })
   )
 );
 
 // 6. PARTES INTERNAS DETALLADAS
 const internalsGroup = new THREE.Group();
-gimenaRoot.add(internalsGroup);
+addStatic(gimenaRoot, internalsGroup);
 
 const internalTftPcb = new THREE.Mesh(
   new THREE.BoxGeometry(1.62, 1.22, 0.07),
   new THREE.MeshBasicMaterial({ color: 0xdc2626 })
 );
 internalTftPcb.position.set(0, 1.14, 0.65);
-internalsGroup.add(internalTftPcb);
+addStatic(internalsGroup, internalTftPcb);
 
 const internalMicPcb = new THREE.Mesh(
   new THREE.CylinderGeometry(0.16, 0.16, 0.06, 12),
@@ -689,7 +705,7 @@ const internalMicPcb = new THREE.Mesh(
 );
 internalMicPcb.rotation.x = Math.PI / 2;
 internalMicPcb.position.set(0.62, 0.26, 0.72);
-internalsGroup.add(internalMicPcb);
+addStatic(internalsGroup, internalMicPcb);
 
 const speakerCone = new THREE.Mesh(
   new THREE.CylinderGeometry(0.42, 0.28, 0.26, 16),
@@ -697,23 +713,23 @@ const speakerCone = new THREE.Mesh(
 );
 speakerCone.rotation.x = Math.PI / 2;
 speakerCone.position.set(0, -0.76, 0.58);
-internalsGroup.add(speakerCone);
+addStatic(internalsGroup, speakerCone);
 
 const esp32Group = new THREE.Group();
 esp32Group.position.set(0, -0.92, -0.18);
-internalsGroup.add(esp32Group);
+addStatic(internalsGroup, esp32Group);
 
-esp32Group.add(new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.1, 0.88), new THREE.MeshBasicMaterial({ color: 0x10b981 })));
+addStatic(esp32Group, new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.1, 0.88), new THREE.MeshBasicMaterial({ color: 0x10b981 })));
 const wifiShield = new THREE.Mesh(new THREE.BoxGeometry(0.58, 0.12, 0.52), new THREE.MeshBasicMaterial({ color: 0xe2e8f0 }));
 wifiShield.position.set(-0.25, 0.08, 0);
-esp32Group.add(wifiShield);
+addStatic(esp32Group, wifiShield);
 
 const espLedMesh = new THREE.Mesh(new THREE.SphereGeometry(0.05, 8, 8), new THREE.MeshBasicMaterial({ color: 0x00d8ff }));
 espLedMesh.position.set(0.52, 0.09, 0.22);
-esp32Group.add(espLedMesh);
+addStatic(esp32Group, espLedMesh);
 
 // ============================================================================
-// FLECHAS DE PARTES INTERNAS (CON TRANSLATE3D ACELERADO POR GPU)
+// FLECHAS DE PARTES INTERNAS (CERO REFLOW DOM)
 // ============================================================================
 const internalPinsLayer = document.getElementById('internalPinsLayer');
 const INTERNAL_PARTS_DEFS = [
@@ -756,35 +772,45 @@ const tempVec = new THREE.Vector3();
 
 function updateInternalPins() {
   const showInternals = state.viewMode === 'xray' || state.viewMode === 'exploded';
-  const w = window.innerWidth;
-  const h = window.innerHeight;
+  const w = state.viewportW;
+  const h = state.viewportH;
 
-  internalPinNodes.forEach((p) => {
+  for (let i = 0; i < internalPinNodes.length; i++) {
+    const p = internalPinNodes[i];
     if (!showInternals) {
       if (p.el.style.display !== 'none') p.el.style.display = 'none';
-      return;
+      continue;
     }
     tempVec.copy(p.pos).applyMatrix4(gimenaRoot.matrixWorld).project(camera);
     const x = (tempVec.x * 0.5 + 0.5) * w;
     const y = (-tempVec.y * 0.5 + 0.5) * h;
     if (p.el.style.display !== 'inline-flex') p.el.style.display = 'inline-flex';
-    p.el.style.transform = `translate3d(${x}px, ${y}px, 0) translate(-50%, -50%)`;
-  });
+    p.el.style.transform = `translate3d(${x.toFixed(1)}px, ${y.toFixed(1)}px, 0) translate(-50%, -50%)`;
+  }
 }
 
 // ============================================================================
-// FLECHA SVG DINÁMICA (ACELERADA POR GPU SIN REFLOW)
+// FLECHA SVG DINÁMICA CON RECTÁNGULO CACHEADO (CERO LAYOUT THRASHING)
 // ============================================================================
 const pointerPath = document.getElementById('pointerPath');
 const targetBeacon = document.getElementById('targetBeacon');
 const beaconTag = document.getElementById('beaconTag');
 const activeStepIndicator = document.getElementById('activeStepIndicator');
 let activeCardElement = document.querySelector('.scroll-step[data-step="0"] .mini-card');
+let cachedCardRect = activeCardElement ? activeCardElement.getBoundingClientRect() : null;
+
+function refreshActiveCardRect() {
+  if (activeCardElement) {
+    cachedCardRect = activeCardElement.getBoundingClientRect();
+  }
+}
+
+window.addEventListener('scroll', refreshActiveCardRect, { passive: true });
 
 function updatePointerLine() {
   const chapter = SCROLL_CHAPTERS[state.activeStep] || SCROLL_CHAPTERS[0];
 
-  if (!chapter.showPointer || !activeCardElement) {
+  if (!chapter.showPointer || !cachedCardRect) {
     targetBeacon.style.opacity = '0';
     pointerPath.setAttribute('d', '');
     return;
@@ -792,28 +818,36 @@ function updatePointerLine() {
 
   tempVec.copy(chapter.anchorLocal).applyMatrix4(gimenaRoot.matrixWorld).project(camera);
 
-  const w = window.innerWidth;
-  const h = window.innerHeight;
+  const w = state.viewportW;
+  const h = state.viewportH;
+  const portrait = isPortraitMobile();
+
   const tx = THREE.MathUtils.clamp((tempVec.x * 0.5 + 0.5) * w, 45, w - 45);
-  const ty = THREE.MathUtils.clamp((-tempVec.y * 0.5 + 0.5) * h, 48, h * 0.56);
+  const ty = THREE.MathUtils.clamp((-tempVec.y * 0.5 + 0.5) * h, 46, portrait ? h * 0.56 : h - 60);
 
   targetBeacon.style.opacity = '1';
-  targetBeacon.style.transform = `translate3d(${tx}px, ${ty}px, 0) translate(-50%, -50%)`;
+  targetBeacon.style.transform = `translate3d(${tx.toFixed(1)}px, ${ty.toFixed(1)}px, 0) translate(-50%, -50%)`;
 
-  const rect = activeCardElement.getBoundingClientRect();
+  const rect = cachedCardRect;
 
-  if (isMobileScreen()) {
+  if (portrait) {
     const sx = rect.left + rect.width * 0.5;
     const sy = rect.top;
     const cy1 = sy - (sy - ty) * 0.45;
     const cy2 = ty + (sy - ty) * 0.25;
-    pointerPath.setAttribute('d', `M ${sx} ${sy} C ${sx} ${cy1}, ${tx} ${cy2}, ${tx} ${ty + 9}`);
+    pointerPath.setAttribute(
+      'd',
+      `M ${sx.toFixed(0)} ${sy.toFixed(0)} C ${sx.toFixed(0)} ${cy1.toFixed(0)}, ${tx.toFixed(0)} ${cy2.toFixed(0)}, ${tx.toFixed(0)} ${(ty + 8).toFixed(0)}`
+    );
   } else {
     const sx = rect.right;
     const sy = rect.top + rect.height * 0.45;
     const cx1 = sx + (tx - sx) * 0.45;
     const cx2 = sx + (tx - sx) * 0.65;
-    pointerPath.setAttribute('d', `M ${sx} ${sy} C ${cx1} ${sy}, ${cx2} ${ty}, ${tx - 9} ${ty}`);
+    pointerPath.setAttribute(
+      'd',
+      `M ${sx.toFixed(0)} ${sy.toFixed(0)} C ${cx1.toFixed(0)} ${sy.toFixed(0)}, ${cx2.toFixed(0)} ${ty.toFixed(0)}, ${(tx - 8).toFixed(0)} ${ty.toFixed(0)}`
+    );
   }
 }
 
@@ -863,7 +897,7 @@ function gimenaSpeak(text, emotion = state.emotion) {
     window.speechSynthesis.cancel();
     const u = new SpeechSynthesisUtterance(text.replace(/UwU/gi, ''));
     u.lang = 'es-CO';
-    u.pitch = 1.24;
+    u.pitch = 1.22;
     u.rate = 1.08;
     const voices = window.speechSynthesis.getVoices();
     const v =
@@ -886,7 +920,7 @@ function gimenaSpeak(text, emotion = state.emotion) {
 }
 
 // ============================================================================
-// DETECCIÓN DE SCROLL SÚPER ÁGIL
+// DETECCIÓN DE SCROLL
 // ============================================================================
 const stepElements = document.querySelectorAll('.scroll-step');
 
@@ -898,6 +932,7 @@ const observer = new IntersectionObserver(
         state.activeStep = idx;
         state.tftDirty = true;
         activeCardElement = entry.target.querySelector('.mini-card');
+        refreshActiveCardRect();
 
         stepElements.forEach((el) => el.classList.toggle('active', Number(el.dataset.step) === idx));
 
@@ -921,7 +956,7 @@ stepElements.forEach((el) => observer.observe(el));
 // ============================================================================
 document.getElementById('btnHeroSpeak').addEventListener('click', () => {
   state.pokeBounce = 0.25;
-  gimenaSpeak('¡Hola! Desliza hacia abajo y verás cómo me ajusto al instante para mostrarte cada parte.', 'happy');
+  gimenaSpeak('Hola, soy Gimena. Desliza para explorar cada componente de mi arquitectura en tiempo real.', 'happy');
 });
 
 btnToggleQrOnTft.addEventListener('click', () => {
@@ -929,7 +964,7 @@ btnToggleQrOnTft.addEventListener('click', () => {
   state.tftDirty = true;
   if (state.qrOnTftForced) {
     document.getElementById('stepQrSection').scrollIntoView({ behavior: 'smooth' });
-    gimenaSpeak('¡Mostrando mi QR en la pantalla TFT 3D!', 'qr');
+    gimenaSpeak('Mostrando código QR en mi pantalla TFT 3D.', 'qr');
   } else {
     setEmotion('happy');
   }
@@ -942,29 +977,29 @@ document.querySelectorAll('[data-trigger]').forEach((btn) => {
       state.qrOnTftForced = true;
       state.tftDirty = true;
       document.getElementById('stepQrSection').scrollIntoView({ behavior: 'smooth' });
-      gimenaSpeak('¡Apunta con tu cámara a mi pantalla TFT 3D!', 'qr');
+      gimenaSpeak('Apunta con tu cámara a mi pantalla TFT 3D.', 'qr');
     } else if (t === 'jump-internals') {
       document.getElementById('stepInternalsSection').scrollIntoView({ behavior: 'smooth' });
       setViewMode('exploded');
-      gimenaSpeak('¡Mostrando mis partes internas con flechas!', 'surprised');
+      gimenaSpeak('Mostrando arquitectura interna con etiquetas interactivas.', 'surprised');
     } else if (t === 'cycle-emotions') {
       state.qrOnTftForced = false;
       ['love', 'surprised', 'thinking', 'music', 'sad', 'sleepy', 'happy'].forEach((emo, i) => {
         setTimeout(() => setEmotion(emo), i * 420);
       });
-      gimenaSpeak('¡Desfilando mis 7 emociones en la pantalla TFT!', 'love');
+      gimenaSpeak('Ejecutando secuencia de expresiones en la pantalla TFT.', 'love');
     } else if (t === 'swap-face') {
       state.qrOnTftForced = false;
       state.faceStyle = state.faceStyle === 'pixel' ? 'anime' : 'pixel';
       state.tftDirty = true;
       gimenaSpeak(
-        state.faceStyle === 'pixel' ? 'Rostro Pixel-Art activado.' : 'Rostro Anime TFT activado.',
+        state.faceStyle === 'pixel' ? 'Modo Pixel-Art activado.' : 'Modo Retrato Anime TFT activado.',
         'happy'
       );
     } else if (t === 'test-mic') {
-      gimenaSpeak('¡Escucho tu voz por mi micrófono digital INMP441 de 24 bits!', 'surprised');
+      gimenaSpeak('Capturando comandos de voz mediante el micrófono digital INMP441 de 24 bits.', 'surprised');
     } else if (t === 'test-speaker') {
-      gimenaSpeak('¡Emitiendo ondas de sonido 3D desde mis 19 perforaciones frontales!', 'music');
+      gimenaSpeak('Emitiendo ondas de sonido 3D desde el amplificador I2S MAX98357A.', 'music');
     } else if (t === 'toggle-exploded') {
       setViewMode(state.viewMode === 'exploded' ? 'normal' : 'exploded');
     }
@@ -991,8 +1026,8 @@ document.getElementById('btnSimulateFallback').addEventListener('click', () => {
   state.cloudFallbackMode = !state.cloudFallbackMode;
   gimenaSpeak(
     state.cloudFallbackMode
-      ? '¡Rescate PC activado! Si cae la nube, tu PC sintetiza mi voz localmente.'
-      : '¡Conexión primaria en la nube activa!',
+      ? 'Rescate PC activado: ante fallo de API Cloud, el servidor local sintetiza la voz.'
+      : 'Conexión primaria en la nube activa.',
     'surprised'
   );
 });
@@ -1021,13 +1056,13 @@ document.getElementById('chatForm').addEventListener('submit', (e) => {
     state.qrOnTftForced = true;
     state.tftDirty = true;
     document.getElementById('stepQrSection').scrollIntoView({ behavior: 'smooth' });
-    gimenaSpeak('¡Aquí tienes mi QR en la pantalla TFT!', 'qr');
+    gimenaSpeak('Mostrando código QR en la pantalla TFT.', 'qr');
   } else if (lower.includes('sala')) {
     document.querySelector('.iot-chip[data-device="sala"]').click();
   } else if (lower.includes('ventilador')) {
     document.querySelector('.iot-chip[data-device="ventilador"]').click();
   } else {
-    gimenaSpeak('¡Hola! Soy Gimena, lista para ayudarte en casa.', 'happy');
+    gimenaSpeak('Comando recibido. Soy Gimena, asistente con cerebro Gemini 3.5 y respaldo en PC.', 'happy');
   }
 });
 
@@ -1038,7 +1073,7 @@ if (SpeechRecognition) {
   document.getElementById('btnVoiceInput').addEventListener('click', () => {
     try {
       rec.start();
-      speechText.textContent = 'Escuchando...';
+      speechText.textContent = 'Escuchando comando...';
     } catch {}
   });
   rec.onresult = (ev) => {
@@ -1061,52 +1096,81 @@ galleryModal.addEventListener('click', (e) => {
   if (e.target === galleryModal) galleryModal.classList.add('hidden');
 });
 
-// Tocar a Gimena en 3D
+// Interacción directa por toque o clic en el modelo 3D
 const raycaster = new THREE.Raycaster();
 const pointerNDC = new THREE.Vector2();
 let downPos = { x: 0, y: 0 };
 
-window.addEventListener('pointermove', (e) => {
-  state.lookTarget.set((e.clientX / window.innerWidth) * 2 - 1, (e.clientY / window.innerHeight) * 2 - 1);
-}, { passive: true });
+window.addEventListener(
+  'pointermove',
+  (e) => {
+    state.lookTarget.set((e.clientX / state.viewportW) * 2 - 1, (e.clientY / state.viewportH) * 2 - 1);
+    state.tftDirty = true;
+  },
+  { passive: true }
+);
 
-renderer.domElement.addEventListener('pointerdown', (e) => {
-  downPos = { x: e.clientX, y: e.clientY };
-}, { passive: true });
+renderer.domElement.addEventListener(
+  'pointerdown',
+  (e) => {
+    downPos = { x: e.clientX, y: e.clientY };
+  },
+  { passive: true }
+);
 
-renderer.domElement.addEventListener('pointerup', (e) => {
-  if (Math.hypot(e.clientX - downPos.x, e.clientY - downPos.y) > 8) return;
-  pointerNDC.x = (e.clientX / window.innerWidth) * 2 - 1;
-  pointerNDC.y = -(e.clientY / window.innerHeight) * 2 + 1;
-  raycaster.setFromCamera(pointerNDC, camera);
-  const hits = raycaster.intersectObjects(gimenaRoot.children, true);
-  if (hits.length > 0) {
-    state.pokeBounce = 0.25;
-    if (hits[0].object.name === 'screen') {
-      state.qrOnTftForced = !state.qrOnTftForced;
-      state.tftDirty = true;
-      gimenaSpeak(state.qrOnTftForced ? '¡QR en mi pantalla TFT activado!' : '¡Jiji! Rostro UwU activado.', state.qrOnTftForced ? 'qr' : 'love');
-    } else {
-      gimenaSpeak('¡Jiji! Me hiciste cosquillas UwU', 'love');
+renderer.domElement.addEventListener(
+  'pointerup',
+  (e) => {
+    if (Math.hypot(e.clientX - downPos.x, e.clientY - downPos.y) > 8) return;
+    pointerNDC.x = (e.clientX / state.viewportW) * 2 - 1;
+    pointerNDC.y = -(e.clientY / state.viewportH) * 2 + 1;
+    raycaster.setFromCamera(pointerNDC, camera);
+    const hits = raycaster.intersectObjects(gimenaRoot.children, true);
+    if (hits.length > 0) {
+      state.pokeBounce = 0.24;
+      if (hits[0].object.name === 'screen') {
+        state.qrOnTftForced = !state.qrOnTftForced;
+        state.tftDirty = true;
+        gimenaSpeak(
+          state.qrOnTftForced ? 'Código QR activado en la pantalla TFT.' : 'Rostro principal activado.',
+          state.qrOnTftForced ? 'qr' : 'love'
+        );
+      } else {
+        gimenaSpeak('Chasis en PLA negro con arquitectura interna modular.', 'love');
+      }
     }
-  }
-}, { passive: true });
+  },
+  { passive: true }
+);
 
-window.addEventListener('resize', () => {
-  camera.aspect = window.innerWidth / window.innerHeight;
-  camera.updateProjectionMatrix();
-  renderer.setSize(window.innerWidth, window.innerHeight);
-}, { passive: true });
+window.addEventListener(
+  'resize',
+  () => {
+    state.viewportW = window.innerWidth;
+    state.viewportH = window.innerHeight;
+    camera.aspect = state.viewportW / Math.max(state.viewportH, 1);
+    camera.updateProjectionMatrix();
+    renderer.setSize(state.viewportW, state.viewportH);
+    refreshActiveCardRect();
+  },
+  { passive: true }
+);
 
 // ============================================================================
-// BUCLE PRINCIPAL SÚPER ÁGIL (RESPUESTA INMEDIATA AL SCROLL)
+// BUCLE PRINCIPAL CON PAUSA EN SEGUNDO PLANO Y CERO ALLOCATIONS
 // ============================================================================
 const clock = new THREE.Clock();
 const desiredCamVec = new THREE.Vector3();
 const desiredTargetVec = new THREE.Vector3();
+let rafId = null;
 
 function animate() {
-  requestAnimationFrame(animate);
+  if (document.hidden) {
+    rafId = null;
+    return;
+  }
+  rafId = requestAnimationFrame(animate);
+
   const elapsed = clock.getElapsedTime();
 
   state.smoothLook.lerp(state.lookTarget, 0.14);
@@ -1134,17 +1198,16 @@ function animate() {
   renderTFTScreen(elapsed);
 
   const chapter = SCROLL_CHAPTERS[state.activeStep] || SCROLL_CHAPTERS[0];
-  const mobile = isMobileScreen();
-  const aspect = window.innerWidth / Math.max(window.innerHeight, 1);
+  const portrait = isPortraitMobile();
+  const aspect = state.viewportW / Math.max(state.viewportH, 1);
 
-  // Interpolación más rápida (0.16) para que el cambio de paso se sienta instantáneo y ágil
-  const aspectScaleFactor = mobile ? Math.min(1, aspect / 0.52) : 1;
-  const targetScale = (mobile ? chapter.mobileScale : chapter.desktopScale) * aspectScaleFactor;
+  const aspectScaleFactor = portrait ? Math.min(1, aspect / 0.52) : 1;
+  const targetScale = (portrait ? chapter.mobileScale : chapter.desktopScale) * aspectScaleFactor;
   const nextScale = THREE.MathUtils.lerp(gimenaRoot.scale.x, targetScale, 0.16);
   gimenaRoot.scale.setScalar(nextScale);
 
   if (!state.userOrbiting) {
-    if (mobile) {
+    if (portrait) {
       const focusY = chapter.mobileFocusY * nextScale;
       const verticalOffset = 0.52;
       desiredCamVec.set(0, focusY - verticalOffset * 0.35, chapter.mobileCamZ);
@@ -1183,7 +1246,8 @@ function animate() {
   rightArmGroup.position.x = THREE.MathUtils.lerp(rightArmGroup.position.x, 1.62 + explode * 0.5, 0.16);
   feetGroup.position.y = THREE.MathUtils.lerp(feetGroup.position.y, -1.78 - explode * 0.35, 0.16);
 
-  soundWaveRings.forEach((ring, idx) => {
+  for (let idx = 0; idx < soundWaveRings.length; idx++) {
+    const ring = soundWaveRings[idx];
     if (state.isSpeaking || state.emotion === 'music' || state.activeStep === 3) {
       const pr = (elapsed * 1.6 + idx * 0.5) % 1;
       const sc = 1 + pr * 2.2;
@@ -1193,12 +1257,19 @@ function animate() {
     } else {
       ring.material.opacity = 0;
     }
-  });
+  }
 
   controls.update();
   renderer.render(scene, camera);
   updatePointerLine();
   updateInternalPins();
 }
+
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden && !rafId) {
+    clock.getDelta();
+    animate();
+  }
+});
 
 animate();
