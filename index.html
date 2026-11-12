@@ -3,13 +3,12 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>GimenAI — Asistente Robótica 3D con IA & Domótica</title>
-  <meta name="description" content="Explora en 3D interactivo a Gimena (GimenAI): asistente robótica de escritorio con ESP32, pantalla TFT expresiva, Gemini AI, control IoT y respaldo inteligente en PC." />
+  <title>GimenAI — Recorrido 3D Interactivo</title>
+  <meta name="description" content="Explora a Gimena en 3D haciendo scroll: pantalla TFT, micrófono INMP441, parlante I2S, espalda grabada, domótica IoT y respaldo en PC." />
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css" />
-  <!-- Three.js + OrbitControls via ES Module Import Map -->
   <script type="importmap">
     {
       "imports": {
@@ -20,453 +19,304 @@
   </script>
 </head>
 <body>
-  <!-- Ambient Background Glows -->
-  <div class="ambient-bg">
-    <div class="glow glow-cyan" id="ambientGlowCyan"></div>
-    <div class="glow glow-warm" id="ambientGlowWarm"></div>
-    <div class="grid-overlay"></div>
+  <!-- ESCENARIO 3D FIJO A PANTALLA COMPLETA -->
+  <div class="fixed-stage" id="fixedStage">
+    <div id="canvasContainer" class="canvas-container" aria-label="Modelo 3D interactivo de Gimena"></div>
+
+    <!-- Puntero visual dinámico que señala la pieza activa en el modelo 3D -->
+    <svg class="pointer-svg" id="pointerSvg" preserveAspectRatio="none">
+      <defs>
+        <linearGradient id="lineGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+          <stop offset="0%" stop-color="#7cc9ff" stop-opacity="0.95" />
+          <stop offset="100%" stop-color="#00d8ff" stop-opacity="0.25" />
+        </linearGradient>
+      </defs>
+      <path id="pointerPath" d="" fill="none" stroke="url(#lineGrad)" stroke-width="2" stroke-dasharray="5 5" />
+    </svg>
+
+    <!-- Anillo luminoso sobre la parte señalada en 3D -->
+    <div class="target-beacon" id="targetBeacon">
+      <span class="beacon-core"></span>
+      <span class="beacon-pulse"></span>
+      <span class="beacon-tag" id="beaconTag">Pantalla TFT 2.4"</span>
+    </div>
   </div>
 
-  <!-- Minimalist Top Navigation -->
-  <header class="navbar">
-    <div class="nav-brand">
-      <span class="status-dot" id="systemStatusDot"></span>
-      <span class="brand-name">Gimen<span class="accent">AI</span></span>
-      <span class="brand-badge">ESP32 + Gemini 3.5</span>
+  <!-- BARRA SUPERIOR MINIMALISTA -->
+  <header class="topbar">
+    <div class="brand">
+      <span class="status-dot"></span>
+      <span class="brand-title">Gimen<span class="accent">AI</span></span>
+      <span class="step-pill" id="activeStepIndicator">01 / 07 · Frente</span>
     </div>
-    <nav class="nav-links">
-      <a href="#stage" class="nav-link active">Modelo 3D</a>
-      <a href="#que-hace" class="nav-link">¿Qué hace?</a>
-      <a href="#simulador-iot" class="nav-link">Laboratorio IoT</a>
-      <a href="#arquitectura" class="nav-link">Respaldo Dual</a>
-      <a href="#hardware" class="nav-link">Hardware</a>
-    </nav>
-    <div class="nav-actions">
-      <button class="btn-ghost" id="btnComparePhoto" title="Comparar con la foto real de Gimena">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
-        <span>Foto Real vs 3D</span>
-      </button>
-      <button class="btn-primary" id="btnQuickGreet">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>
-        <span>Escuchar a Gimena</span>
-      </button>
+
+    <!-- Selector rápido de vista 3D siempre a mano -->
+    <div class="quick-hud">
+      <button class="hud-chip active" data-view="normal">Cubierta PLA</button>
+      <button class="hud-chip" data-view="xray">Rayos-X</button>
+      <button class="hud-chip" data-view="exploded">Despiece 3D</button>
+      <button class="hud-chip" id="btnToggleFaceStyle">Pixel-Art</button>
+      <button class="hud-chip hud-chip-photo" id="btnOpenGallery">📸 Fotos Reales (3)</button>
     </div>
   </header>
 
-  <!-- Main Interactive Layout -->
-  <main class="main-layout">
-    <!-- HERO / 3D INTERACTIVE STAGE -->
-    <section id="stage" class="hero-stage">
-      <!-- Left Column: Minimalist Identity & Interactive Prompt -->
-      <div class="hero-info">
-        <div class="pill-tag">
-          <span class="pulse-ring"></span>
-          <span>ROBOT ASISTENTE DE ESCRITORIO · INTERACTIVO EN TIEMPO REAL</span>
-        </div>
-        <h1 class="hero-title">
-          Hola, soy <span class="gradient-text">Gimena</span>.<br />
-          Tu compañera física con IA y control del hogar.
-        </h1>
-        <p class="hero-subtitle">
-          Impresa en 3D en PLA negro brillante, con rostro expresivo en pantalla <strong>TFT 2.4"</strong>, voz bidireccional <strong>I2S</strong>, cerebro <strong>Gemini 3.5 Flash Lite</strong> y arquitectura inmortal con respaldo automático en PC.
+  <!-- DOCK FLOTANTE INFERIOR: VOZ EN VIVO + EXPRESIONES -->
+  <div class="bottom-dock">
+    <div class="dock-emotions">
+      <button class="emo-btn active" data-emotion="happy" title="Feliz UwU">😊</button>
+      <button class="emo-btn" data-emotion="love" title="Amor">😍</button>
+      <button class="emo-btn" data-emotion="surprised" title="Sorpresa">😮</button>
+      <button class="emo-btn" data-emotion="thinking" title="Pensando">🤔</button>
+      <button class="emo-btn" data-emotion="music" title="Música">🎵</button>
+      <button class="emo-btn" data-emotion="sad" title="Triste">🥺</button>
+      <button class="emo-btn" data-emotion="sleepy" title="Dormida">😴</button>
+    </div>
+
+    <form id="chatForm" class="dock-chat">
+      <button type="button" class="dock-mic" id="btnVoiceInput" title="Hablar por micrófono">🎙️</button>
+      <input
+        type="text"
+        id="chatInput"
+        placeholder="Háblale a Gimena (ej. 'Enciende la sala', '¿Qué haces?')..."
+        autocomplete="off"
+      />
+      <button type="submit" class="dock-send">Hablar</button>
+    </form>
+
+    <div class="dock-speech" id="speechBubble">
+      <span class="wave-dots" id="waveDots"><i></i><i></i><i></i></span>
+      <span id="speechText">Haz scroll para explorar cada parte de mi cuerpo 3D UwU</span>
+    </div>
+  </div>
+
+  <!-- RECORRIDO SCROLLYTELLING (POCO TEXTO, MUY VISUAL, SEÑALANDO PARTES) -->
+  <main class="scrolly-track">
+    <!-- PASO 1: PRESENTACIÓN FRONTAL -->
+    <section class="scroll-step active" data-step="0" data-part="front">
+      <div class="step-card">
+        <span class="step-num">01 · HOLA, SOY GIMENA</span>
+        <h1>Tu robot de escritorio con <span class="accent">IA + Domótica</span></h1>
+        <p class="step-brief">
+          Haz <strong>scroll hacia abajo</strong> para girar mi modelo 3D y descubrir qué hace cada parte de mi cuerpo.
         </p>
-
-        <!-- Live Speech Bubble from Gimena -->
-        <div class="speech-card" id="speechCard">
-          <div class="speech-header">
-            <span class="speech-speaker">
-              <span class="voice-wave" id="voiceWaveIndicator">
-                <i></i><i></i><i></i><i></i>
-              </span>
-              GIMENA DICE:
-            </span>
-            <span class="speech-mode-badge" id="activeTtsEngineBadge">Motor: Voz Activa</span>
-          </div>
-          <p class="speech-text" id="gimenaSpeechText">
-            «¡Hola! Soy Gimena UwU. Mueve el cursor para que te siga con la mirada, toca mi carcasa 3D para hacerme cosquillas o pídele a mi cerebro que encienda las luces.»
-          </p>
+        <div class="mini-badges">
+          <span class="badge">🧠 Gemini 3.5 Flash Lite</span>
+          <span class="badge">📺 TFT 2.4" Color</span>
+          <span class="badge">🏠 Control IoT</span>
         </div>
-
-        <!-- Live Interactive Chat / Command Input -->
-        <div class="interactive-console">
-          <form id="chatForm" class="chat-input-bar">
-            <button type="button" class="btn-mic" id="btnVoiceInput" title="Hablar por micrófono con Gimena">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
-            </button>
-            <input
-              type="text"
-              id="chatInput"
-              placeholder="Escríbele o háblale a Gimena (ej. 'Enciende la sala', '¿Qué haces?', 'Modo amor')..."
-              autocomplete="off"
-            />
-            <button type="submit" class="btn-send">Enviar</button>
-          </form>
-
-          <!-- Quick Prompts -->
-          <div class="quick-prompts">
-            <button class="chip-prompt" data-prompt="¿Quién eres y qué puedes hacer?">🤖 ¿Qué haces?</button>
-            <button class="chip-prompt" data-prompt="Enciende la luz de la sala y el ventilador">💡 Encender sala + ventilador</button>
-            <button class="chip-prompt" data-prompt="¿Qué pasa si falla internet o la API de voz?">🛡️ ¿Cómo funciona tu respaldo PC?</button>
-            <button class="chip-prompt" data-prompt="Cuéntame un chiste geek">😄 Cuéntame un chiste</button>
-            <button class="chip-prompt" data-prompt="Muéstrame tus componentes por dentro">🔍 Ver interior Rayos-X</button>
-          </div>
+        <div class="step-actions">
+          <button class="btn-action" id="btnHeroSpeak">🔊 Escuchar saludo de Gimena</button>
         </div>
       </div>
+    </section>
 
-      <!-- Right Column: 3D WebGL Viewport & Floating HUD Controls -->
-      <div class="stage-viewport-wrapper">
-        <div id="canvasContainer" class="canvas-container" aria-label="Modelo 3D interactivo de Gimena">
-          <!-- 3D Hotspot Labels (positioned dynamically by Three.js) -->
-          <div id="hotspotsContainer" class="hotspots-layer"></div>
+    <!-- PASO 2: PANTALLA TFT 2.4" -->
+    <section class="scroll-step" data-step="1" data-part="screen">
+      <div class="step-card">
+        <span class="step-num">02 · PANTALLA TFT 2.4" (ST7789)</span>
+        <h2>Mi rostro expresivo a <span class="accent">320×240 px</span></h2>
 
-          <!-- Top-Left Viewport Overlay: Live Telemetry -->
-          <div class="hud-telemetry">
-            <div class="telemetry-item">
-              <span class="tel-label">PANTALLA</span>
-              <span class="tel-val" id="hudScreenState">TFT 320×240 · 60 FPS</span>
-            </div>
-            <div class="telemetry-item">
-              <span class="tel-label">EXPRESIÓN</span>
-              <span class="tel-val accent" id="hudEmotionState">FELIZ (UwU)</span>
-            </div>
-            <div class="telemetry-item">
-              <span class="tel-label">AUDIO I2S</span>
-              <span class="tel-val" id="hudAudioState">EN ESPERA</span>
-            </div>
+        <div class="do-dont-grid">
+          <div class="do-box">
+            <span class="box-title">✅ QUÉ HACE</span>
+            <ul>
+              <li>Muestra <strong>7 emociones</strong> animadas en tiempo real.</li>
+              <li>Sincroniza mi boquita <code>w</code> cuando te hablo.</li>
+              <li>Cambia entre rostro <strong>Pixel-Art</strong> y <strong>Anime</strong>.</li>
+            </ul>
           </div>
-
-          <!-- Top-Right Viewport Overlay: View Mode Toggles -->
-          <div class="hud-view-modes">
-            <button class="hud-btn active" data-view="normal" title="Vista física original en PLA negro">
-              <span>Cubierta PLA</span>
-            </button>
-            <button class="hud-btn" data-view="xray" title="Transparencia de rayos X para ver componentes">
-              <span>Rayos-X</span>
-            </button>
-            <button class="hud-btn" data-view="exploded" title="Separar piezas en 3D (Exploded View)">
-              <span>Despiece 3D</span>
-            </button>
-            <button class="hud-btn" id="btnToggleFaceStyle" title="Cambiar entre rostro Pixel-Art de la foto y rostro Anime del firmware">
-              <span id="faceStyleLabel">Rostro: Pixel-Art</span>
-            </button>
+          <div class="dont-box">
+            <span class="box-title">❌ QUÉ NO HACE</span>
+            <ul>
+              <li><strong>No es táctil</strong> (se interactúa por voz o web).</li>
+              <li>No reproduce videos MP4 pesados; todo se dibuja en vivo por bus SPI.</li>
+            </ul>
           </div>
+        </div>
 
-          <!-- Bottom Viewport Overlay: Interactive Expression Bar -->
-          <div class="hud-expressions">
-            <span class="hud-bar-label">Expresiones TFT:</span>
-            <div class="expression-buttons">
-              <button class="expr-btn active" data-emotion="happy" title="Feliz UwU (Foto original)">😊 UwU</button>
-              <button class="expr-btn" data-emotion="love" title="Enamorada con corazones">😍 Amor</button>
-              <button class="expr-btn" data-emotion="surprised" title="Sorprendida">😮 Sorpresa</button>
-              <button class="expr-btn" data-emotion="thinking" title="Pensando / Procesando IA">🤔 Pensando</button>
-              <button class="expr-btn" data-emotion="music" title="Modo Música / Baile">🎵 Música</button>
-              <button class="expr-btn" data-emotion="sad" title="Triste con lluvia">🥺 Triste</button>
-              <button class="expr-btn" data-emotion="sleepy" title="Dormida Zzz">😴 Dormida</button>
-            </div>
+        <div class="step-actions">
+          <button class="btn-action" data-trigger="cycle-emotions">✨ Desfilar emociones</button>
+          <button class="btn-action btn-outline" data-trigger="swap-face">🎨 Cambiar Pixel / Anime</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- PASO 3: MICRÓFONO INMP441 & RANURA FRONTAL -->
+    <section class="scroll-step" data-step="2" data-part="mic">
+      <div class="step-card">
+        <span class="step-num">03 · MICRÓFONO DIGITAL INMP441</span>
+        <h2>Mi oído digital en la <span class="accent">esquina derecha</span></h2>
+
+        <div class="do-dont-grid">
+          <div class="do-box">
+            <span class="box-title">✅ QUÉ HACE</span>
+            <ul>
+              <li>Capta tu voz con precisión digital <strong>I2S de 24 bits</strong>.</li>
+              <li>Entiende órdenes naturales como <em>«Tengo calor, prende el ventilador»</em>.</li>
+            </ul>
           </div>
+          <div class="dont-box">
+            <span class="box-title">❌ QUÉ NO HACE</span>
+            <ul>
+              <li><strong>No te espía</strong> ni guarda grabaciones ocultas.</li>
+              <li>Si la API STT en la nube falla, el <strong>PC traduce el audio</strong> de respaldo.</li>
+            </ul>
+          </div>
+        </div>
 
-          <!-- Helper Hint -->
-          <div class="hud-hint">
-            <span>🖱️ Arrastra para girar 360° · Rueda para zoom · Haz clic en Gimena para interactuar</span>
-            <button class="btn-reset-cam" id="btnResetCamera">Centrar cámara</button>
+        <div class="step-actions">
+          <button class="btn-action" data-trigger="test-mic">🎙️ Simular orden de voz</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- PASO 4: PARLANTE + REJILLA DE 19 AGUJEROS -->
+    <section class="scroll-step" data-step="3" data-part="speaker">
+      <div class="step-card">
+        <span class="step-num">04 · PARLANTE I2S + 19 PERFORACIONES</span>
+        <h2>Mi voz sale desde el <span class="accent">pecho</span></h2>
+
+        <div class="do-dont-grid">
+          <div class="do-box">
+            <span class="box-title">✅ QUÉ HACE</span>
+            <ul>
+              <li>Amplificador digital <strong>MAX98357A</strong> detrás de mis 19 agujeros.</li>
+              <li>Habla con voz fluida y respalda el audio en el parlante del PC si falla la nube.</li>
+            </ul>
+          </div>
+          <div class="dont-box">
+            <span class="box-title">❌ QUÉ NO HACE</span>
+            <ul>
+              <li><strong>No se queda muda</strong> si cae la API TTS (usa <code>edge-tts</code> local).</li>
+              <li>No es un parlante de alta potencia para fiestas; es voz clara de escritorio.</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="step-actions">
+          <button class="btn-action" data-trigger="test-speaker">🔊 Probar ondas de voz 3D</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- PASO 5: PERFIL LATERAL, ENSAMBLE DE 2 MITADES Y BRAZOS -->
+    <section class="scroll-step" data-step="4" data-part="side">
+      <div class="step-card">
+        <span class="step-num">05 · PERFIL LATERAL & CHASIS 3D</span>
+        <h2>Impresa en <span class="accent">dos mitades PLA</span></h2>
+
+        <div class="mini-photo-row">
+          <img src="assets/gimena-side.jpg" alt="Vista lateral real de Gimena" class="step-thumb" />
+          <p>Unión lateral exacta de las dos carcasas impresas en 3D, eje cilíndrico del brazo y pies dobles de apoyo.</p>
+        </div>
+
+        <div class="do-dont-grid">
+          <div class="do-box">
+            <span class="box-title">✅ QUÉ HACE</span>
+            <ul>
+              <li>Protege toda la electrónica en un cuerpo compacto de escritorio.</li>
+              <li>Facilita abrir el chasis por la mitad para mantenimiento.</li>
+            </ul>
+          </div>
+          <div class="dont-box">
+            <span class="box-title">❌ QUÉ NO HACE</span>
+            <ul>
+              <li><strong>No camina</strong> ni tiene motores en los brazos o pies (es un robot estacionario de compañía).</li>
+            </ul>
           </div>
         </div>
       </div>
     </section>
 
-    <!-- SECTION 2: ¿QUÉ HACE GIMENA? (INTERACTIVE FEATURE CARDS) -->
-    <section id="que-hace" class="section-block">
-      <div class="section-header">
-        <span class="section-eyebrow">CAPACIDADES EN TIEMPO REAL</span>
-        <h2 class="section-title">¿Qué hace exactamente <span class="accent">Gimena</span>?</h2>
-        <p class="section-desc">
-          Haz clic en cualquiera de sus 4 superpoderes para que el modelo 3D te haga una demostración en vivo.
-        </p>
-      </div>
+    <!-- PASO 6: ESPALDA GRABADA "GIMENA", 5 RANURAS Y CABLE USB -->
+    <section class="scroll-step" data-step="5" data-part="back">
+      <div class="step-card">
+        <span class="step-num">06 · ESPALDA: VENTILACIÓN & USB</span>
+        <h2>Sello <span class="accent">«Gimena»</span> y 5 ranuras</h2>
 
-      <div class="capabilities-grid">
-        <!-- Card 1 -->
-        <article class="cap-card" data-demo="ai-conversation">
-          <div class="cap-icon">🧠</div>
-          <div class="cap-badge">Gemini 3.5 Flash Lite</div>
-          <h3>Conversación Natural con Personalidad</h3>
-          <p>
-            Escucha tu voz mediante su micrófono digital <strong>INMP441</strong>, comprende el contexto con IA generativa y responde al instante con una personalidad cálida, expresiva y concisa a través de su altavoz frontal de 19 perforaciones.
-          </p>
-          <button class="btn-card-action">Probar demostración de voz →</button>
-        </article>
-
-        <!-- Card 2 -->
-        <article class="cap-card" data-demo="smart-home">
-          <div class="cap-icon">🏠</div>
-          <div class="cap-badge">GPIO + Tuya Cloud WiFi</div>
-          <h3>Control Domótico por Voz y Panel Web</h3>
-          <p>
-            Controla las luces de la sala, la cocina, el ventilador y enchufes inteligentes <strong>Tuya Smart</strong>. Entiende intenciones dentro de una misma frase (ej. <em>«Tengo calor, prende el ventilador»</em>) y ejecuta la acción física de inmediato.
-          </p>
-          <button class="btn-card-action">Ver reacción domótica →</button>
-        </article>
-
-        <!-- Card 3 -->
-        <article class="cap-card" data-demo="tft-emotions">
-          <div class="cap-icon">✨</div>
-          <div class="cap-badge">ST7789 · 320×240 px</div>
-          <h3>Rostro Animado & Expresiones Vivas</h3>
-          <p>
-            Su pantalla TFT a color renderiza ojos pixel-art brillantes con boca <code>w</code> o retratos anime fluidos: parpadea, sincroniza los labios mientras habla y cambia su estado de ánimo según la conversación.
-          </p>
-          <button class="btn-card-action">Desfilar todas las emociones →</button>
-        </article>
-
-        <!-- Card 4 -->
-        <article class="cap-card" data-demo="pc-fallback">
-          <div class="cap-icon">🛡️</div>
-          <div class="cap-badge">Auto-Sync + Respaldo PC</div>
-          <h3>Sistema Inmortal con Respaldo en PC</h3>
-          <p>
-            Al conectar el ESP32 por USB o WiFi, el PC arranca su servidor automáticamente. Si la API de TTS o STT en la nube falla o agota cuota, el PC procesa el audio localmente (<code>edge-tts</code> + <code>SpeechRecognition</code>) para que Gimena <strong>jamás se quede callada</strong>.
-          </p>
-          <button class="btn-card-action">Simular rescate de fallo API →</button>
-        </article>
-      </div>
-    </section>
-
-    <!-- SECTION 3: SIMULADOR INTERACTIVO DE DOMÓTICA (IOT LAB) -->
-    <section id="simulador-iot" class="section-block iot-section">
-      <div class="iot-layout">
-        <div class="iot-controls-panel">
-          <span class="section-eyebrow">LABORATORIO DOMÓTICO EN VIVO</span>
-          <h2 class="section-title">Pruébala ahora: <span class="accent">Control del Hogar</span></h2>
-          <p class="section-desc">
-            Activa o desactiva los dispositivos conectados a Gimena. Observa cómo la escena 3D se ilumina, cómo Gimena te confirma por voz y cómo se registra el comando en su bus del ESP32.
-          </p>
-
-          <div class="iot-devices-grid">
-            <!-- Sala -->
-            <div class="iot-device-card" id="deviceCardSala" data-device="sala">
-              <div class="iot-device-top">
-                <div class="iot-device-icon">💡</div>
-                <span class="iot-pin-tag">GPIO 19 · Relé 1</span>
-              </div>
-              <div class="iot-device-info">
-                <h4>Luz de la Sala</h4>
-                <span class="iot-status-text" id="statusTextSala">Apagada</span>
-              </div>
-              <button class="iot-toggle-btn" data-toggle-device="sala">Encender</button>
-            </div>
-
-            <!-- Cocina -->
-            <div class="iot-device-card" id="deviceCardCocina" data-device="cocina">
-              <div class="iot-device-top">
-                <div class="iot-device-icon">🍳</div>
-                <span class="iot-pin-tag">GPIO 21 · Relé 2</span>
-              </div>
-              <div class="iot-device-info">
-                <h4>Luz de la Cocina</h4>
-                <span class="iot-status-text" id="statusTextCocina">Apagada</span>
-              </div>
-              <button class="iot-toggle-btn" data-toggle-device="cocina">Encender</button>
-            </div>
-
-            <!-- Ventilador -->
-            <div class="iot-device-card" id="deviceCardVentilador" data-device="ventilador">
-              <div class="iot-device-top">
-                <div class="iot-device-icon">🌀</div>
-                <span class="iot-pin-tag">GPIO 22 · PWM / Relé</span>
-              </div>
-              <div class="iot-device-info">
-                <h4>Ventilador Principal</h4>
-                <span class="iot-status-text" id="statusTextVentilador">Apagado</span>
-              </div>
-              <button class="iot-toggle-btn" data-toggle-device="ventilador">Encender</button>
-            </div>
-
-            <!-- Tuya Smart Plug -->
-            <div class="iot-device-card" id="deviceCardTuya" data-device="tuya">
-              <div class="iot-device-top">
-                <div class="iot-device-icon">🔌</div>
-                <span class="iot-pin-tag">Tuya Cloud API · WiFi</span>
-              </div>
-              <div class="iot-device-info">
-                <h4>Enchufe Inteligente Tuya</h4>
-                <span class="iot-status-text" id="statusTextTuya">Apagado</span>
-              </div>
-              <button class="iot-toggle-btn" data-toggle-device="tuya">Encender</button>
-            </div>
-          </div>
+        <div class="mini-photo-row">
+          <img src="assets/gimena-back.jpg" alt="Vista trasera real de Gimena con grabado y 5 ranuras" class="step-thumb" />
+          <p>5 ranuras superiores de refrigeración, nombre <strong>Gimena</strong> grabado en el PLA y salida inferior del cable USB blanco.</p>
         </div>
 
-        <!-- Live Serial / FastAPI Monitor -->
-        <div class="iot-terminal-panel">
-          <div class="terminal-window">
-            <div class="terminal-bar">
-              <div class="terminal-dots">
-                <span></span><span></span><span></span>
-              </div>
-              <span class="terminal-title">gimena.local:8000 — Monitor ESP32 + Servidor PC</span>
-              <button class="btn-clear-log" id="btnClearLog">Limpiar</button>
-            </div>
-            <div class="terminal-body" id="terminalLog">
-              <div class="log-line"><span class="log-time">[BOOT]</span> <span class="log-ok">ESP32 DevKit V1 detectado en COM8 / 192.168.0.19</span></div>
-              <div class="log-line"><span class="log-time">[TFT]</span> Pantalla ST7789 320x240 inicializada (Rostro Kawaii Cyan activo)</div>
-              <div class="log-line"><span class="log-time">[I2S]</span> Micrófono INMP441 + Amplificador MAX98357A listos</div>
-              <div class="log-line"><span class="log-time">[SYNC]</span> Servidor FastAPI en PC sincronizado con respaldo TTS/STT activo</div>
-            </div>
+        <div class="do-dont-grid">
+          <div class="do-box">
+            <span class="box-title">✅ QUÉ HACE</span>
+            <ul>
+              <li>Disipa el calor del ESP32 por las <strong>5 rejillas verticales</strong>.</li>
+              <li>Al conectarla por USB al PC, <strong>arranca el servidor web sola</strong>.</li>
+            </ul>
+          </div>
+          <div class="dont-box">
+            <span class="box-title">❌ QUÉ NO HACE</span>
+            <ul>
+              <li><strong>No usa baterías</strong> que se descarguen a mitad del día; su cable USB le da energía continua.</li>
+            </ul>
           </div>
         </div>
       </div>
     </section>
 
-    <!-- SECTION 4: ARQUITECTURA DE RESPALDO DUAL (ESP32 + PC FALLBACK) -->
-    <section id="arquitectura" class="section-block">
-      <div class="section-header">
-        <span class="section-eyebrow">ARQUITECTURA RESILIENTE</span>
-        <h2 class="section-title">Diseñada para <span class="accent">nunca quedarse muda</span></h2>
-        <p class="section-desc">
-          Simula qué ocurre cuando falla una API de voz o transcripción en la nube y observa cómo el servidor en el PC rescata a Gimena en milisegundos.
-        </p>
-      </div>
+    <!-- PASO 7: INTERIOR RAYOS-X + CONTROL DOMÓTICO EN VIVO -->
+    <section class="scroll-step" data-step="6" data-part="internals">
+      <div class="step-card">
+        <span class="step-num">07 · CEREBRO ESP32, DOMÓTICA & RESPALDO PC</span>
+        <h2>Controla tu casa y <span class="accent">pruébala aquí</span></h2>
 
-      <div class="fallback-simulator">
-        <div class="fallback-controls">
-          <div class="mode-switch-card">
-            <div>
-              <h4>Estado de las APIs en la Nube (Gemini TTS / STT)</h4>
-              <p id="cloudApiStatusDesc">Operación normal: el ESP32 consulta directamente a Gemini 3.5 Flash Lite.</p>
-            </div>
-            <div class="fallback-buttons">
-              <button class="btn-sim active" id="btnCloudNormal">☁️ Nube Operativa</button>
-              <button class="btn-sim btn-sim-warn" id="btnSimulateFail">⚡ Simular Fallo de API Cloud</button>
-            </div>
+        <div class="iot-mini-grid">
+          <button class="iot-pill" data-device="sala">💡 Sala <span>OFF</span></button>
+          <button class="iot-pill" data-device="cocina">🍳 Cocina <span>OFF</span></button>
+          <button class="iot-pill" data-device="ventilador">🌀 Ventilador <span>OFF</span></button>
+          <button class="iot-pill" data-device="tuya">🔌 Enchufe Tuya <span>OFF</span></button>
+        </div>
+
+        <div class="do-dont-grid">
+          <div class="do-box">
+            <span class="box-title">✅ QUÉ HACE</span>
+            <ul>
+              <li>Activa relés físicos (<code>GPIO 19, 21, 22</code>) y enchufes WiFi <strong>Tuya</strong>.</li>
+              <li>Si falla la nube, el <strong>PC respalda voz (TTS) y oído (STT)</strong> al instante.</li>
+            </ul>
+          </div>
+          <div class="dont-box">
+            <span class="box-title">❌ QUÉ NO HACE</span>
+            <ul>
+              <li><strong>Jamás te deja tirado</strong> si se agota la cuota de una API externa.</li>
+            </ul>
           </div>
         </div>
 
-        <div class="architecture-pipeline" id="archPipeline">
-          <div class="arch-node" id="nodeEsp32">
-            <span class="arch-tag">NODO FÍSICO</span>
-            <h4>🤖 Robot Gimena (ESP32)</h4>
-            <p>Captura voz con <code>INMP441</code>, anima la pantalla <code>ST7789</code> y reproduce audio por el parlante frontal.</p>
-          </div>
-
-          <div class="arch-connector" id="connCloud">
-            <span class="conn-label" id="connCloudLabel">Ruta Primaria (WiFi HTTPS)</span>
-            <div class="conn-line"></div>
-          </div>
-
-          <div class="arch-node" id="nodeCloud">
-            <span class="arch-tag">IA GENERATIVA</span>
-            <h4>✨ Gemini 3.5 Flash Lite</h4>
-            <p>Procesa lenguaje natural, decide acciones IoT y genera respuesta emocional.</p>
-          </div>
-
-          <div class="arch-connector" id="connFallback">
-            <span class="conn-label" id="connFallbackLabel">Auto-Rescate Local (USB / LAN :8000)</span>
-            <div class="conn-line"></div>
-          </div>
-
-          <div class="arch-node" id="nodePc">
-            <span class="arch-tag">RESPALDO AUTOMÁTICO</span>
-            <h4>💻 Servidor PC (FastAPI)</h4>
-            <p>Detecta a Gimena al conectarse, traduce el audio (STT) si falla la nube y sintetiza voz neural (<code>es-CO-SalomeNeural</code>) en el parlante.</p>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- SECTION 5: ANATOMÍA DE HARDWARE & PINOUT INTERACTIVO -->
-    <section id="hardware" class="section-block">
-      <div class="section-header">
-        <span class="section-eyebrow">INGENIERÍA FÍSICA & PINOUT</span>
-        <h2 class="section-title">Anatomía de <span class="accent">Gimena</span></h2>
-        <p class="section-desc">
-          Selecciona cualquier componente para enfocarlo en el modelo 3D con vista de Rayos-X.
-        </p>
-      </div>
-
-      <div class="hardware-grid">
-        <div class="hw-card" data-focus-part="screen">
-          <div class="hw-header">
-            <span class="hw-num">01</span>
-            <span class="hw-chip">SPI · 320×240 px</span>
-          </div>
-          <h4>Pantalla TFT 2.4" ST7789</h4>
-          <p>Ubicada en el cabezal cúbico superior. Muestra el rostro pixel-art celeste con ojos azules brillantes y boca <code>w</code>.</p>
-          <code class="hw-pins">MOSI:23 · SCLK:18 · CS:15 · DC:2 · RST:4</code>
-        </div>
-
-        <div class="hw-card" data-focus-part="speaker">
-          <div class="hw-header">
-            <span class="hw-num">02</span>
-            <span class="hw-chip">I2S Digital Audio</span>
-          </div>
-          <h4>Parlante + Amp MAX98357A</h4>
-          <p>Alojado detrás de la rejilla circular de 19 perforaciones en el pecho de Gimena para proyectar su voz con claridad.</p>
-          <code class="hw-pins">BCLK:26 · LRC:25 · DIN:27</code>
-        </div>
-
-        <div class="hw-card" data-focus-part="mic">
-          <div class="hw-header">
-            <span class="hw-num">03</span>
-            <span class="hw-chip">Omnidireccional 24-bit</span>
-          </div>
-          <h4>Micrófono Digital INMP441</h4>
-          <p>Situado en el orificio circular inferior derecho del bisel frontal de la cabeza para captar comandos de voz.</p>
-          <code class="hw-pins">WS:32 · SCK:33 · SD:35</code>
-        </div>
-
-        <div class="hw-card" data-focus-part="esp32">
-          <div class="hw-header">
-            <span class="hw-num">04</span>
-            <span class="hw-chip">Dual-Core 240 MHz</span>
-          </div>
-          <h4>Cerebro ESP32 DevKit V1 + Chasis PLA</h4>
-          <p>Carcasa impresa en 3D en PLA negro brillante con brazos laterales, pies estables y alimentación USB trasera.</p>
-          <code class="hw-pins">WiFi 2.4GHz · Relés GPIO 19, 21, 22</code>
+        <div class="step-actions">
+          <button class="btn-action" id="btnSimulateFallback">🛡️ Simular Rescate del PC</button>
+          <button class="btn-action btn-outline" data-trigger="toggle-exploded">🔍 Alternar Despiece 3D</button>
         </div>
       </div>
     </section>
   </main>
 
-  <!-- MODAL: PHOTO COMPARISON (REAL VS 3D) -->
-  <div class="modal-backdrop hidden" id="photoModal">
-    <div class="modal-card">
-      <div class="modal-header">
-        <div>
-          <span class="section-eyebrow">FIDELIDAD DEL GEMELO DIGITAL</span>
-          <h3>Gimena Real (Impresa en 3D) vs Gemelo Digital WebGL</h3>
-        </div>
-        <button class="btn-close-modal" id="btnCloseModal" aria-label="Cerrar">✕</button>
+  <!-- MODAL GALERÍA DE LAS 3 FOTOS REALES VS 3D -->
+  <div class="modal-backdrop hidden" id="galleryModal">
+    <div class="modal-box">
+      <div class="modal-top">
+        <h3>📸 Fotos Reales de Gimena vs Gemelo 3D</h3>
+        <button class="btn-close" id="btnCloseGallery">✕</button>
       </div>
-      <div class="comparison-body">
-        <div class="photo-pane">
-          <img src="assets/gimena-real.jpg" alt="Fotografía real del robot Gimena impreso en 3D sobre una mesa de madera" />
-          <div class="pane-caption">
-            <strong>Fotografía Real de Gimena</strong>
-            <span>Chasis PLA negro brillante, pantalla TFT con rostro celeste pixel-art UwU, ranura inferior, orificio de micrófono INMP441, rejilla de 19 perforaciones y cable USB blanco.</span>
-          </div>
-        </div>
-        <div class="specs-pane">
-          <h4>Detalles recreados en el modelo 3D:</h4>
-          <ul class="fidelity-list">
-            <li><strong>Cabezal Cúbico biselado:</strong> Con acabado de capas de impresión 3D (PLA negro brillante) y ventana empotrada 4:3.</li>
-            <li><strong>Rostro Pixel-Art Idéntico:</strong> Fondo celeste <code>#9fd4ff</code>, grandes ojos azules pixelados con doble brillo blanco y sonrisa <code>w</code>.</li>
-            <li><strong>Ranura e INMP441:</strong> Ranura horizontal inferior izquierda y orificio circular derecho para el micrófono bajo la pantalla.</li>
-            <li><strong>Rejilla Acústica de 19 Agujeros:</strong> Patrón hexagonal/circular exacto (1 central + 6 internos + 12 externos) en el torso frontal.</li>
-            <li><strong>Brazos, Pies y Cable USB:</strong> Brazos cortos rectangulares a los lados, dos pies delanteros robustos y el cable USB blanco saliendo hacia atrás.</li>
-          </ul>
-          <button class="btn-primary full-width" id="btnCloseModalAndFocus">Interactuar con el Modelo 3D</button>
-        </div>
+      <div class="photos-grid">
+        <figure class="photo-item">
+          <img src="assets/gimena-real.jpg" alt="Frente real de Gimena" />
+          <figcaption><strong>1. Vista Frontal:</strong> Pantalla TFT celeste UwU, ranura inferior, mic INMP441 y 19 agujeros del parlante.</figcaption>
+        </figure>
+        <figure class="photo-item">
+          <img src="assets/gimena-side.jpg" alt="Perfil lateral real de Gimena" />
+          <figcaption><strong>2. Perfil Lateral:</strong> Unión central de las 2 mitades impresas en 3D, brazo con base cilíndrica y pies.</figcaption>
+        </figure>
+        <figure class="photo-item">
+          <img src="assets/gimena-back.jpg" alt="Espalda real de Gimena" />
+          <figcaption><strong>3. Espalda:</strong> 5 ranuras verticales, logo «Gimena» grabado, banda de unión y salida del cable USB blanco.</figcaption>
+        </figure>
       </div>
     </div>
   </div>
-
-  <footer class="footer">
-    <div class="footer-inner">
-      <span><strong>GimenAI</strong> — Proyecto de Robótica Asistiva con IA & IoT</span>
-      <span class="footer-sep">·</span>
-      <span>ESP32 + TFT ST7789 + Gemini 3.5 Flash Lite + Servidor de Respaldo PC</span>
-    </div>
-  </footer>
 
   <script type="module" src="app.js"></script>
 </body>
