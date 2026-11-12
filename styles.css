@@ -630,3 +630,144 @@ body.lights-on .fixed-stage {
     grid-template-columns: 1fr;
   }
 }
+
+/* ============================================================================
+   MODO QR EN PANTALLA TFT + TARJETA QR + MODO FERIA KIOSCO
+   ============================================================================ */
+.hud-chip-qr {
+  color: var(--bright);
+  border-color: rgba(0, 216, 255, 0.45);
+  background: rgba(0, 216, 255, 0.1);
+}
+
+.hud-chip-qr.active {
+  background: var(--bright);
+  color: #030712;
+  font-weight: 700;
+  box-shadow: 0 0 18px rgba(0, 216, 255, 0.55);
+}
+
+.qr-step-card {
+  border-color: rgba(0, 216, 255, 0.45) !important;
+}
+
+.qr-inline-box {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(0, 216, 255, 0.35);
+  border-radius: 14px;
+  padding: 0.7rem;
+  margin-bottom: 1rem;
+}
+
+.qr-card-img {
+  width: 96px;
+  height: 96px;
+  border-radius: 10px;
+  background: #fff;
+  padding: 4px;
+  flex-shrink: 0;
+  box-shadow: 0 0 20px rgba(0, 216, 255, 0.3);
+}
+
+.qr-inline-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
+.qr-inline-meta strong {
+  color: #fff;
+  font-family: var(--font-mono);
+  font-size: 0.74rem;
+  word-break: break-all;
+}
+
+.qr-live-pill {
+  align-self: flex-start;
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  color: var(--green);
+  background: rgba(52, 211, 153, 0.12);
+  padding: 0.12rem 0.45rem;
+  border-radius: 999px;
+}
+
+.qr-kiosk-box {
+  max-width: 720px;
+  border-color: var(--bright);
+  box-shadow: 0 0 60px rgba(0, 216, 255, 0.25);
+}
+
+.qr-kiosk-content {
+  display: grid;
+  grid-template-columns: 260px 1fr;
+  gap: 1.6rem;
+  align-items: center;
+}
+
+.qr-scanner-frame {
+  position: relative;
+  width: 260px;
+  height: 260px;
+  border-radius: 18px;
+  padding: 10px;
+  background: #ffffff;
+  box-shadow: 0 0 32px rgba(0, 216, 255, 0.4);
+  overflow: hidden;
+}
+
+.qr-scanner-frame img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.laser-line {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, transparent, #00d8ff, #2563eb, transparent);
+  box-shadow: 0 0 12px #00d8ff;
+  animation: scanLaser 2.2s infinite ease-in-out;
+}
+
+@keyframes scanLaser {
+  0%, 100% { top: 8px; }
+  50% { top: 248px; }
+}
+
+.qr-kiosk-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+}
+
+.qr-kiosk-info p {
+  font-size: 0.92rem;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.qr-url-code {
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  padding: 0.55rem 0.8rem;
+  border-radius: 10px;
+  background: rgba(0, 216, 255, 0.1);
+  border: 1px solid rgba(0, 216, 255, 0.35);
+  color: var(--bright);
+}
+
+@media (max-width: 720px) {
+  .qr-kiosk-content {
+    grid-template-columns: 1fr;
+    justify-items: center;
+    text-align: center;
+  }
+}

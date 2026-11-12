@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>GimenAI — Recorrido 3D Interactivo</title>
-  <meta name="description" content="Explora a Gimena en 3D haciendo scroll: pantalla TFT, micrófono INMP441, parlante I2S, espalda grabada, domótica IoT y respaldo en PC." />
+  <meta name="description" content="Explora a Gimena en 3D haciendo scroll: pantalla TFT, micrófono INMP441, parlante I2S, espalda grabada, domótica IoT, respaldo en PC y QR interactivo en su pantalla." />
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -47,7 +47,7 @@
     <div class="brand">
       <span class="status-dot"></span>
       <span class="brand-title">Gimen<span class="accent">AI</span></span>
-      <span class="step-pill" id="activeStepIndicator">01 / 07 · Frente</span>
+      <span class="step-pill" id="activeStepIndicator">01 / 08 · Frente</span>
     </div>
 
     <!-- Selector rápido de vista 3D siempre a mano -->
@@ -56,6 +56,7 @@
       <button class="hud-chip" data-view="xray">Rayos-X</button>
       <button class="hud-chip" data-view="exploded">Despiece 3D</button>
       <button class="hud-chip" id="btnToggleFaceStyle">Pixel-Art</button>
+      <button class="hud-chip hud-chip-qr" id="btnToggleQrOnTft">📲 QR en Pantalla TFT</button>
       <button class="hud-chip hud-chip-photo" id="btnOpenGallery">📸 Fotos Reales (3)</button>
     </div>
   </header>
@@ -70,6 +71,7 @@
       <button class="emo-btn" data-emotion="music" title="Música">🎵</button>
       <button class="emo-btn" data-emotion="sad" title="Triste">🥺</button>
       <button class="emo-btn" data-emotion="sleepy" title="Dormida">😴</button>
+      <button class="emo-btn" data-emotion="qr" title="Mostrar QR en la pantalla TFT de Gimena">📲</button>
     </div>
 
     <form id="chatForm" class="dock-chat">
@@ -77,7 +79,7 @@
       <input
         type="text"
         id="chatInput"
-        placeholder="Háblale a Gimena (ej. 'Enciende la sala', '¿Qué haces?')..."
+        placeholder="Háblale a Gimena (ej. 'Muestra tu QR', 'Enciende la sala')..."
         autocomplete="off"
       />
       <button type="submit" class="dock-send">Hablar</button>
@@ -97,15 +99,16 @@
         <span class="step-num">01 · HOLA, SOY GIMENA</span>
         <h1>Tu robot de escritorio con <span class="accent">IA + Domótica</span></h1>
         <p class="step-brief">
-          Haz <strong>scroll hacia abajo</strong> para girar mi modelo 3D y descubrir qué hace cada parte de mi cuerpo.
+          Haz <strong>scroll hacia abajo</strong> para girar mi modelo 3D, ver mis partes señaladas e incluso <strong>escanear mi QR directo en mi pantalla TFT</strong>.
         </p>
         <div class="mini-badges">
           <span class="badge">🧠 Gemini 3.5 Flash Lite</span>
           <span class="badge">📺 TFT 2.4" Color</span>
-          <span class="badge">🏠 Control IoT</span>
+          <span class="badge">📲 QR en Pantalla</span>
         </div>
         <div class="step-actions">
-          <button class="btn-action" id="btnHeroSpeak">🔊 Escuchar saludo de Gimena</button>
+          <button class="btn-action" id="btnHeroSpeak">🔊 Escuchar saludo</button>
+          <button class="btn-action btn-outline" data-trigger="jump-qr">📲 Ver QR en mi TFT</button>
         </div>
       </div>
     </section>
@@ -120,16 +123,15 @@
           <div class="do-box">
             <span class="box-title">✅ QUÉ HACE</span>
             <ul>
-              <li>Muestra <strong>7 emociones</strong> animadas en tiempo real.</li>
-              <li>Sincroniza mi boquita <code>w</code> cuando te hablo.</li>
-              <li>Cambia entre rostro <strong>Pixel-Art</strong> y <strong>Anime</strong>.</li>
+              <li>Muestra <strong>7 emociones</strong> animadas y proyecta mi <strong>código QR interactivo</strong>.</li>
+              <li>Sincroniza mi boquita <code>w</code> cuando hablo.</li>
             </ul>
           </div>
           <div class="dont-box">
             <span class="box-title">❌ QUÉ NO HACE</span>
             <ul>
               <li><strong>No es táctil</strong> (se interactúa por voz o web).</li>
-              <li>No reproduce videos MP4 pesados; todo se dibuja en vivo por bus SPI.</li>
+              <li>No reproduce videos MP4 pesados; todo se dibuja en vivo por SPI.</li>
             </ul>
           </div>
         </div>
@@ -292,7 +294,54 @@
         </div>
       </div>
     </section>
+
+    <!-- PASO 8: QR EN LA PANTALLA TFT DE GIMENA (PARA QUE LA GENTE QUE PASE LO ESCANEE) -->
+    <section class="scroll-step" data-step="7" data-part="qr-screen" id="stepQrSection">
+      <div class="step-card qr-step-card">
+        <span class="step-num">08 · ¡LLÉVAME EN TU CELULAR!</span>
+        <h2>Escanea mi <span class="accent">Pantalla TFT 3D</span></h2>
+        <p class="step-brief">
+          ¡Mira mi pantalla 3D a la derecha! Estoy proyectando mi <strong>código QR oficial</strong> en mi rostro TFT para que cualquier persona que pase apunte con su cámara y abra esta experiencia 3D en su móvil.
+        </p>
+
+        <div class="qr-inline-box">
+          <img src="assets/qr-gimenai-web.png" alt="Código QR para abrir GimenAI 3D en el celular" class="qr-card-img" />
+          <div class="qr-inline-meta">
+            <span class="qr-live-pill">🟢 EN PRODUCCIÓN</span>
+            <strong>balmes2baxter.github.io/GimenAI-web</strong>
+            <span>Apunta con tu cámara al rostro 3D de Gimena o a esta tarjeta.</span>
+          </div>
+        </div>
+
+        <div class="step-actions">
+          <button class="btn-action" id="btnOpenQrModal">📺 Modo Feria / QR Gigante</button>
+          <a href="assets/qr-gimenai-web.png" download="QR-GimenAI-3D.png" class="btn-action btn-outline" style="text-decoration:none;">⬇️ Descargar QR</a>
+        </div>
+      </div>
+    </section>
   </main>
+
+  <!-- MODAL MODO FERIA / KIOSCO: QR INTERACTIVO GIGANTE -->
+  <div class="modal-backdrop hidden" id="qrKioskModal">
+    <div class="modal-box qr-kiosk-box">
+      <div class="modal-top">
+        <h3>📲 ¡Escanea a Gimena y pruébala en 3D en tu celular!</h3>
+        <button class="btn-close" id="btnCloseQrModal">✕</button>
+      </div>
+      <div class="qr-kiosk-content">
+        <div class="qr-scanner-frame">
+          <span class="laser-line"></span>
+          <img src="assets/qr-gimenai-web.png" alt="QR GimenAI Web 3D" />
+        </div>
+        <div class="qr-kiosk-info">
+          <span class="step-num">EXPERIENCIA 3D INTERACTIVA EN VIVO</span>
+          <h2>Hablemos y explora mis partes en 3D</h2>
+          <p>Abre la cámara de tu teléfono, apunta al código QR y gira a Gimena 360°, cambia sus emociones TFT y enciende las luces del hogar desde tu pantalla.</p>
+          <code class="qr-url-code">https://balmes2baxter.github.io/GimenAI-web/</code>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <!-- MODAL GALERÍA DE LAS 3 FOTOS REALES VS 3D -->
   <div class="modal-backdrop hidden" id="galleryModal">

@@ -3,13 +3,14 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 
 // ============================================================================
-// ESTADO GLOBAL DE GIMENA 3D + SCROLLYTELLING
+// ESTADO GLOBAL DE GIMENA 3D + SCROLLYTELLING + QR EN PANTALLA TFT
 // ============================================================================
 const state = {
   activeStep: 0,
-  emotion: 'happy',
+  emotion: 'happy', // happy | love | surprised | thinking | music | sad | sleepy | qr
   faceStyle: 'pixel', // 'pixel' (foto real) | 'anime' (firmware)
   viewMode: 'normal', // 'normal' | 'xray' | 'exploded'
+  qrOnTftForced: false,
   isSpeaking: false,
   mouthOpen: 0,
   blinkProgress: 0,
@@ -27,11 +28,20 @@ const state = {
   },
 };
 
-// Configuración de cada capítulo del Scroll (Cámara + Rotación del Robot + Punto 3D señalado)
+// Cargar la imagen del QR oficial de producción para dibujarla dentro de la pantalla TFT 3D
+const qrImage = new Image();
+qrImage.crossOrigin = 'anonymous';
+qrImage.src = 'assets/qr-gimenai-web.png';
+let qrImageLoaded = false;
+qrImage.onload = () => {
+  qrImageLoaded = true;
+};
+
+// Configuración de los 8 capítulos del Scroll (Cámara + Rotación + Punto 3D señalado)
 const SCROLL_CHAPTERS = [
   {
     step: 0,
-    title: '01 / 07 · Vista Frontal',
+    title: '01 / 08 · Vista Frontal',
     beaconLabel: 'Gimena · Robot IA',
     camPos: new THREE.Vector3(-1.35, 0.35, 7.2),
     camTarget: new THREE.Vector3(-1.1, 0.0, 0),
@@ -42,10 +52,9 @@ const SCROLL_CHAPTERS = [
   },
   {
     step: 1,
-    title: '02 / 07 · Pantalla TFT 2.4"',
+    title: '02 / 08 · Pantalla TFT 2.4"',
     beaconLabel: 'Pantalla TFT ST7789 (320×240)',
     camPos: new THREE.Vector3(-0.95, 0.88, 4.75),
-    camPosMobile: new THREE.Vector3(0, 0.85, 5.6),
     camTarget: new THREE.Vector3(-0.85, 0.72, 0),
     robotRotY: -0.12,
     viewMode: 'normal',
@@ -54,7 +63,7 @@ const SCROLL_CHAPTERS = [
   },
   {
     step: 2,
-    title: '03 / 07 · Micrófono INMP441',
+    title: '03 / 08 · Micrófono INMP441',
     beaconLabel: 'Micrófono Digital INMP441 + Ranura',
     camPos: new THREE.Vector3(-0.75, 0.25, 4.35),
     camTarget: new THREE.Vector3(-0.65, 0.18, 0),
@@ -65,7 +74,7 @@ const SCROLL_CHAPTERS = [
   },
   {
     step: 3,
-    title: '04 / 07 · Parlante I2S (19 agujeros)',
+    title: '04 / 08 · Parlante I2S (19 agujeros)',
     beaconLabel: 'Rejilla de 19 Perforaciones + Amp I2S',
     camPos: new THREE.Vector3(-0.95, -0.55, 4.85),
     camTarget: new THREE.Vector3(-0.85, -0.65, 0),
@@ -76,35 +85,46 @@ const SCROLL_CHAPTERS = [
   },
   {
     step: 4,
-    title: '05 / 07 · Perfil Lateral (2 Mitades PLA)',
+    title: '05 / 08 · Perfil Lateral (2 Mitades PLA)',
     beaconLabel: 'Unión de 2 Mitades 3D + Brazo Lateral',
     camPos: new THREE.Vector3(-1.15, 0.1, 6.2),
     camTarget: new THREE.Vector3(-1.0, -0.15, 0),
-    robotRotY: Math.PI * 0.48, // Giro 90° mostrando el perfil lateral idéntico a la foto 2
+    robotRotY: Math.PI * 0.48,
     viewMode: 'normal',
     anchorLocal: new THREE.Vector3(-1.62, -0.65, 0.15),
     showPointer: true,
   },
   {
     step: 5,
-    title: '06 / 07 · Espalda: Grabado "Gimena" & USB',
+    title: '06 / 08 · Espalda: Grabado "Gimena" & USB',
     beaconLabel: '5 Ranuras + Grabado "Gimena" + USB',
     camPos: new THREE.Vector3(-1.05, 0.15, 5.8),
     camTarget: new THREE.Vector3(-0.95, -0.05, 0),
-    robotRotY: Math.PI * 0.96, // Giro 180° mostrando la espalda idéntica a la foto 3
+    robotRotY: Math.PI * 0.96,
     viewMode: 'normal',
     anchorLocal: new THREE.Vector3(0, 0.92, -0.92),
     showPointer: true,
   },
   {
     step: 6,
-    title: '07 / 07 · Interior Rayos-X + Domótica',
+    title: '07 / 08 · Interior Rayos-X + Domótica',
     beaconLabel: 'Placa ESP32 DevKit V1 + Relés IoT',
     camPos: new THREE.Vector3(-1.2, 0.25, 6.8),
     camTarget: new THREE.Vector3(-1.0, -0.1, 0),
     robotRotY: -0.35,
     viewMode: 'xray',
     anchorLocal: new THREE.Vector3(0, -0.82, 0),
+    showPointer: true,
+  },
+  {
+    step: 7,
+    title: '08 / 08 · ¡Escanea mi Pantalla TFT!',
+    beaconLabel: '📲 ¡Escanea el QR directo en mi pantalla TFT!',
+    camPos: new THREE.Vector3(-0.62, 1.08, 3.55), // Zoom súper cercano a la pantalla TFT para escanear fácil
+    camTarget: new THREE.Vector3(-0.55, 1.05, 0),
+    robotRotY: -0.04,
+    viewMode: 'normal',
+    anchorLocal: new THREE.Vector3(-0.45, 1.14, 0.94),
     showPointer: true,
   },
 ];
@@ -132,7 +152,6 @@ function create3DPrintLayerBumpTexture() {
   return tex;
 }
 
-// Placa con el grabado "Gimena" en bajo relieve para la espalda (fiel a la foto 3)
 function createEngravedGimenaTexture() {
   const canvas = document.createElement('canvas');
   canvas.width = 512;
@@ -140,18 +159,14 @@ function createEngravedGimenaTexture() {
   const ctx = canvas.getContext('2d');
 
   ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-  // Sombra interior del grabado en el PLA negro
   ctx.font = '700 86px "Space Grotesk", "Inter", sans-serif';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
 
-  // Borde biselado claro inferior para simular relieve impreso en 3D
   ctx.lineWidth = 5;
   ctx.strokeStyle = 'rgba(180, 205, 240, 0.28)';
   ctx.strokeText('Gimena', 256, 84);
 
-  // Cavidad oscura del texto grabado
   ctx.fillStyle = '#040507';
   ctx.fillText('Gimena', 256, 80);
 
@@ -161,7 +176,7 @@ function createEngravedGimenaTexture() {
 }
 
 // ============================================================================
-// PANTALLA TFT 320x240 EN VIVO (PIXEL-ART FOTO REAL + ANIME)
+// PANTALLA TFT 320x240 EN VIVO (ROSTRO PIXEL-ART + ANIME + QR INTERACTIVO)
 // ============================================================================
 const tftCanvas = document.createElement('canvas');
 tftCanvas.width = 320;
@@ -184,23 +199,25 @@ function pRect(px, py, pw, ph, color) {
   );
 }
 
-function drawPixelEye(centerPx, centerPy, lookX, lookY, emotion, blink) {
+function drawPixelEye(centerPx, centerPy, lookX, lookY, emotion, blink, radiusScale = 1) {
   const cx = Math.round(centerPx + lookX * 3.5);
   const cy = Math.round(centerPy + lookY * 2.5);
 
   if (blink > 0.65 || emotion === 'sleepy') {
     const navy = '#182868';
-    for (let dx = -9; dx <= 9; dx++) {
-      const dy = emotion === 'happy' || emotion === 'love'
-        ? -Math.round((1 - (dx / 9) ** 2) * 3)
-        : Math.round((1 - (dx / 9) ** 2) * 2);
+    const span = Math.round(9 * radiusScale);
+    for (let dx = -span; dx <= span; dx++) {
+      const dy =
+        emotion === 'happy' || emotion === 'love'
+          ? -Math.round((1 - (dx / span) ** 2) * 3)
+          : Math.round((1 - (dx / span) ** 2) * 2);
       pRect(cx + dx, cy + dy, 1, 2, navy);
     }
     return;
   }
 
-  const rx = emotion === 'surprised' ? 11 : 10;
-  const ry = emotion === 'surprised' ? 12 : 11;
+  const rx = Math.round((emotion === 'surprised' ? 11 : 10) * radiusScale);
+  const ry = Math.round((emotion === 'surprised' ? 12 : 11) * radiusScale);
 
   for (let dy = -ry; dy <= ry; dy++) {
     for (let dx = -rx; dx <= rx; dx++) {
@@ -211,11 +228,11 @@ function drawPixelEye(centerPx, centerPy, lookX, lookY, emotion, blink) {
         pRect(cx + dx, cy + dy, 1, 1, '#162564');
       } else {
         const isLowerCrescent =
-          dy > 2 &&
-          (dx * dx) / ((rx - 2) ** 2) + ((dy - 1) * (dy - 1)) / ((ry - 2) ** 2) > 0.36;
+          dy > 1 &&
+          (dx * dx) / ((rx - 1.5) ** 2) + ((dy - 1) * (dy - 1)) / ((ry - 1.5) ** 2) > 0.35;
         if (isLowerCrescent) {
           pRect(cx + dx, cy + dy, 1, 1, '#00d8ff');
-        } else if (dy < -3) {
+        } else if (dy < -2) {
           pRect(cx + dx, cy + dy, 1, 1, '#1c42b8');
         } else {
           pRect(cx + dx, cy + dy, 1, 1, '#245be0');
@@ -226,22 +243,19 @@ function drawPixelEye(centerPx, centerPy, lookX, lookY, emotion, blink) {
 
   if (emotion === 'love') {
     const hc = '#ff4d94';
-    pRect(cx - 3, cy - 2, 2, 2, hc);
+    pRect(cx - 2, cy - 2, 2, 2, hc);
     pRect(cx + 1, cy - 2, 2, 2, hc);
-    pRect(cx - 4, cy - 1, 9, 2, hc);
-    pRect(cx - 3, cy + 1, 7, 2, hc);
-    pRect(cx - 1, cy + 3, 3, 2, hc);
+    pRect(cx - 3, cy - 1, 7, 2, hc);
+    pRect(cx - 2, cy + 1, 5, 2, hc);
   }
 
-  // Doble brillo blanco idéntico a la foto 1
-  pRect(cx - 5, cy - 5, 4, 4, '#ffffff');
-  pRect(cx - 6, cy - 4, 1, 2, '#ffffff');
-  pRect(cx - 4, cy - 6, 2, 1, '#ffffff');
-  pRect(cx + 3, cy + 3, 2, 2, '#ffffff');
+  const hlSize = Math.max(2, Math.round(4 * radiusScale));
+  pRect(cx - Math.round(4 * radiusScale), cy - Math.round(4 * radiusScale), hlSize, hlSize, '#ffffff');
+  pRect(cx + Math.round(2 * radiusScale), cy + Math.round(2 * radiusScale), 2, 2, '#ffffff');
 
   if (emotion === 'sad') {
     const tearY = (Date.now() % 900) / 150;
-    pRect(cx - 6, cy + 7 + tearY, 2, 3, '#5ce1ff');
+    pRect(cx - 5, cy + 6 + tearY, 2, 3, '#5ce1ff');
   }
 }
 
@@ -279,10 +293,71 @@ function drawPixelMouth(centerPx, centerPy, emotion, isSpeaking, mouthOpen) {
   }
 }
 
+// Dibuja el modo QR interactivo directamente en la pantalla TFT 320x240 de Gimena
+function renderQrModeOnTft(timeSec, lx, ly) {
+  const grad = tftCtx.createLinearGradient(0, 0, 320, 240);
+  grad.addColorStop(0, '#8ecbff');
+  grad.addColorStop(1, '#bce3ff');
+  tftCtx.fillStyle = grad;
+  tftCtx.fillRect(0, 0, 320, 240);
+
+  // Lado izquierdo de la TFT: Mini rostro kawaii de Gimena invitando a escanear
+  drawPixelEye(12, 20, lx * 0.5, ly * 0.5, 'happy', state.blinkProgress, 0.62);
+  drawPixelEye(27, 20, lx * 0.5, ly * 0.5, 'happy', state.blinkProgress, 0.62);
+  pRect(7, 28, 4, 2, '#ff9ebb');
+  pRect(28, 28, 4, 2, '#ff9ebb');
+  drawPixelMouth(19, 32, 'happy', state.isSpeaking, state.mouthOpen);
+
+  // Texto pixel/tech en el lado izquierdo
+  tftCtx.fillStyle = '#162564';
+  tftCtx.font = '700 13px "JetBrains Mono", monospace';
+  tftCtx.fillText('¡ESCANÉAME', 10, 172);
+  tftCtx.fillText('CON TU CEL!', 10, 188);
+
+  // Flechas animadas apuntando hacia el QR a la derecha
+  const shift = Math.floor(timeSec * 6) % 3;
+  tftCtx.fillStyle = '#0055ff';
+  tftCtx.font = '700 18px "JetBrains Mono", monospace';
+  tftCtx.fillText('>>>'.slice(0, 1 + shift), 32, 212);
+
+  // Lado derecho de la TFT: Tarjeta blanca de alto contraste con el código QR real escaneable
+  const qrBoxX = 114;
+  const qrBoxY = 18;
+  const qrBoxSize = 194;
+
+  // Sombra y marco brillante
+  tftCtx.fillStyle = '#162564';
+  tftCtx.fillRect(qrBoxX - 4, qrBoxY - 4, qrBoxSize + 8, qrBoxSize + 8);
+  tftCtx.fillStyle = '#ffffff';
+  tftCtx.fillRect(qrBoxX, qrBoxY, qrBoxSize, qrBoxSize);
+
+  if (qrImageLoaded) {
+    tftCtx.imageSmoothingEnabled = false;
+    tftCtx.drawImage(qrImage, qrBoxX + 6, qrBoxY + 6, qrBoxSize - 12, qrBoxSize - 12);
+  }
+
+  // Línea láser de escaneo sutil que recorre los bordes sin tapar el QR
+  const laserY = qrBoxY + 8 + ((Math.sin(timeSec * 3.2) * 0.5 + 0.5) * (qrBoxSize - 16));
+  tftCtx.fillStyle = 'rgba(0, 216, 255, 0.38)';
+  tftCtx.fillRect(qrBoxX + 2, laserY, qrBoxSize - 4, 3);
+
+  // Etiqueta inferior bajo el QR
+  tftCtx.fillStyle = '#162564';
+  tftCtx.font = '700 10px "JetBrains Mono", monospace';
+  tftCtx.fillText('GIMENAI 3D WEB · LIVE', qrBoxX + 24, 228);
+}
+
 function renderTFTScreen(timeSec) {
   const emotion = state.emotion;
   const lx = state.smoothLook.x;
   const ly = state.smoothLook.y;
+  const showFullQr =
+    emotion === 'qr' || state.activeStep === 7 || state.qrOnTftForced;
+
+  if (showFullQr) {
+    renderQrModeOnTft(timeSec, lx, ly);
+    return;
+  }
 
   if (state.faceStyle === 'pixel') {
     const grad = tftCtx.createLinearGradient(0, 0, 0, 240);
@@ -321,6 +396,15 @@ function renderTFTScreen(timeSec) {
     drawPixelEye(25, 24, lx, ly, emotion, state.blinkProgress);
     drawPixelEye(55, 24, lx, ly, emotion, state.blinkProgress);
     drawPixelMouth(40, 43, emotion, state.isSpeaking, state.mouthOpen);
+
+    // Mini insignia interactiva en la esquina inferior derecha de la TFT durante el scroll
+    if (qrImageLoaded) {
+      tftCtx.fillStyle = 'rgba(22, 37, 100, 0.85)';
+      tftCtx.fillRect(256, 212, 58, 22);
+      tftCtx.fillStyle = '#ffffff';
+      tftCtx.font = '700 10px "JetBrains Mono", monospace';
+      tftCtx.fillText('📲 QR 3D', 262, 227);
+    }
   } else {
     // Modo Retrato Anime del firmware
     const skyGrad = tftCtx.createLinearGradient(0, 0, 0, 240);
@@ -408,7 +492,7 @@ container.appendChild(renderer.domElement);
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
 controls.dampingFactor = 0.06;
-controls.enableZoom = false; // Para que la rueda del ratón haga scroll por la historia fluida
+controls.enableZoom = false;
 controls.target.copy(SCROLL_CHAPTERS[0].camTarget);
 
 controls.addEventListener('start', () => {
@@ -420,7 +504,6 @@ controls.addEventListener('end', () => {
   }, 1800);
 });
 
-// Luces de estudio (frontal, contra-luz para ver la espalda y las 5 ranuras, y luz IoT)
 const ambientLight = new THREE.AmbientLight(0xdbeafe, 0.95);
 scene.add(ambientLight);
 
@@ -472,7 +555,7 @@ const seamLineMaterial = new THREE.MeshStandardMaterial({
 const gimenaRoot = new THREE.Group();
 scene.add(gimenaRoot);
 
-// 1. CABEZA (Frente: Pantalla + Ranura + Mic INMP441 | Lado: Unión 2 mitades | Espalda: 5 Ranuras + Grabado "Gimena")
+// 1. CABEZA
 const headGroup = new THREE.Group();
 headGroup.position.set(0, 1.02, 0);
 gimenaRoot.add(headGroup);
@@ -485,14 +568,12 @@ headShellMesh.castShadow = true;
 headShellMesh.receiveShadow = true;
 headGroup.add(headShellMesh);
 
-// Costura vertical lateral de unión de las 2 mitades impresas en 3D (vista en Foto 2)
 const headSeamRing = new THREE.Mesh(
   new THREE.BoxGeometry(2.405, 2.25, 0.028),
   seamLineMaterial
 );
 headGroup.add(headSeamRing);
 
-// Pantalla TFT 2.4" frontal empotrada
 const bezelRecessMesh = new THREE.Mesh(
   new RoundedBoxGeometry(1.66, 1.26, 0.12, 3, 0.03),
   darkCavityMaterial
@@ -508,7 +589,6 @@ tftScreenMesh.position.set(0, 0.12, 0.925);
 tftScreenMesh.name = 'screen';
 headGroup.add(tftScreenMesh);
 
-// Ranura inferior frontal + Micrófono circular derecho INMP441 (Foto 1)
 const frontSlotMesh = new THREE.Mesh(
   new RoundedBoxGeometry(1.06, 0.085, 0.08, 2, 0.02),
   darkCavityMaterial
@@ -531,13 +611,12 @@ micHoleMesh.position.set(0.62, -0.76, 0.904);
 micHoleMesh.name = 'mic';
 headGroup.add(micHoleMesh);
 
-// ESPALDA DE LA CABEZA (Foto 3): 5 Ranuras verticales de ventilación + Grabado "Gimena"
+// ESPALDA DE LA CABEZA: 5 Ranuras verticales + Grabado "Gimena"
 const backVentGroup = new THREE.Group();
 backVentGroup.position.set(0, 0.36, -0.892);
 headGroup.add(backVentGroup);
 
 for (let i = -2; i <= 2; i++) {
-  // Hueco de cada una de las 5 ranuras verticales
   const slotMesh = new THREE.Mesh(
     new RoundedBoxGeometry(0.11, 0.42, 0.06, 2, 0.015),
     darkCavityMaterial
@@ -546,7 +625,6 @@ for (let i = -2; i <= 2; i++) {
   backVentGroup.add(slotMesh);
 }
 
-// Grabado "Gimena" debajo de las 5 ranuras verticales (Foto 3)
 const gimenaLogoPlane = new THREE.Mesh(
   new THREE.PlaneGeometry(1.55, 0.48),
   new THREE.MeshBasicMaterial({
@@ -558,7 +636,6 @@ gimenaLogoPlane.position.set(0, -0.42, -0.895);
 gimenaLogoPlane.rotation.y = Math.PI;
 headGroup.add(gimenaLogoPlane);
 
-// Banda negra mate en la unión trasera del cuello (visible en Foto 3)
 const backTapeMesh = new THREE.Mesh(
   new THREE.BoxGeometry(2.15, 0.46, 0.04),
   new THREE.MeshStandardMaterial({ color: 0x181b22, roughness: 0.78, metalness: 0.05 })
@@ -566,7 +643,7 @@ const backTapeMesh = new THREE.Mesh(
 backTapeMesh.position.set(0, -0.92, -0.89);
 headGroup.add(backTapeMesh);
 
-// 2. TORSO (Frente: 19 agujeros del parlante | Lado: costura 2 mitades + brazos | Espalda: Puerto USB inferior)
+// 2. TORSO
 const torsoGroup = new THREE.Group();
 torsoGroup.position.set(0, -0.82, 0);
 gimenaRoot.add(torsoGroup);
@@ -579,7 +656,6 @@ torsoShellMesh.castShadow = true;
 torsoShellMesh.receiveShadow = true;
 torsoGroup.add(torsoShellMesh);
 
-// Costura vertical lateral del torso (unión de las 2 mitades en Foto 2)
 const torsoSeamRing = new THREE.Mesh(
   new THREE.BoxGeometry(3.185, 1.53, 0.028),
   seamLineMaterial
@@ -593,7 +669,6 @@ const neckCollarMesh = new THREE.Mesh(
 neckCollarMesh.position.set(0, 0.78, 0);
 torsoGroup.add(neckCollarMesh);
 
-// Rejilla circular frontal de 19 perforaciones (1 + 6 + 12)
 const speakerGrilleGroup = new THREE.Group();
 speakerGrilleGroup.position.set(0, 0.06, 1.012);
 torsoGroup.add(speakerGrilleGroup);
@@ -615,7 +690,6 @@ holeCoords.forEach(([hx, hy]) => {
   speakerGrilleGroup.add(m);
 });
 
-// Anillos de ondas sonoras 3D
 const soundWaveRings = [];
 for (let i = 0; i < 3; i++) {
   const ring = new THREE.Mesh(
@@ -632,7 +706,6 @@ for (let i = 0; i < 3; i++) {
   soundWaveRings.push(ring);
 }
 
-// Hueco rectangular trasero inferior para la salida del cable USB (Foto 3)
 const usbPortCutoutMesh = new THREE.Mesh(
   new RoundedBoxGeometry(0.36, 0.26, 0.14, 2, 0.02),
   darkCavityMaterial
@@ -640,14 +713,12 @@ const usbPortCutoutMesh = new THREE.Mesh(
 usbPortCutoutMesh.position.set(0, -0.42, -0.98);
 torsoGroup.add(usbPortCutoutMesh);
 
-// 3. BRAZOS LATERALES CON BASE CILÍNDRICA EN LA MITAD FRONTAL (Foto 2)
+// 3. BRAZOS LATERALES CON BASE CILÍNDRICA
 function createSideArm(isLeft) {
   const group = new THREE.Group();
   const sign = isLeft ? -1 : 1;
-  // Ubicado en la mitad delantera del lateral, exactamente como en la foto 2
   group.position.set(sign * 1.62, -0.86, 0.36);
 
-  // Base cilíndrica de hombro
   const shoulderPeg = new THREE.Mesh(
     new THREE.CylinderGeometry(0.22, 0.22, 0.18, 24),
     blackPlaMaterial
@@ -655,7 +726,6 @@ function createSideArm(isLeft) {
   shoulderPeg.rotation.z = Math.PI / 2;
   group.add(shoulderPeg);
 
-  // Bloque vertical redondeado del brazo
   const armBlock = new THREE.Mesh(
     new RoundedBoxGeometry(0.36, 0.68, 0.38, 4, 0.08),
     blackPlaMaterial
@@ -672,7 +742,7 @@ const rightArmGroup = createSideArm(false);
 gimenaRoot.add(leftArmGroup);
 gimenaRoot.add(rightArmGroup);
 
-// 4. PIES CON UNIÓN CENTRAL DE LAS 2 MITADES (Foto 2 y 3)
+// 4. PIES CON UNIÓN CENTRAL
 const feetGroup = new THREE.Group();
 feetGroup.position.set(0, -1.78, 0.14);
 gimenaRoot.add(feetGroup);
@@ -686,7 +756,6 @@ gimenaRoot.add(feetGroup);
   foot.castShadow = true;
   feetGroup.add(foot);
 
-  // Línea de unión de las 2 mitades en los pies (Foto 2)
   const footSeam = new THREE.Mesh(
     new THREE.BoxGeometry(0.94, 0.47, 0.028),
     seamLineMaterial
@@ -695,7 +764,7 @@ gimenaRoot.add(feetGroup);
   feetGroup.add(footSeam);
 });
 
-// 5. CABLE USB BLANCO SALIENDO DEL HUECO RECTANGULAR TRASERO (Foto 3)
+// 5. CABLE USB BLANCO TRASERO
 const usbCurve = new THREE.CatmullRomCurve3([
   new THREE.Vector3(0.0, -1.24, -0.96),
   new THREE.Vector3(0.18, -1.55, -1.45),
@@ -708,7 +777,7 @@ const usbCableMesh = new THREE.Mesh(
 );
 gimenaRoot.add(usbCableMesh);
 
-// 6. COMPONENTES INTERNOS (ESP32 + TFT PCB + SPEAKER I2S) PARA EL PASO 7 (RAYOS-X)
+// 6. COMPONENTES INTERNOS (RAYOS-X)
 const internalsGroup = new THREE.Group();
 gimenaRoot.add(internalsGroup);
 
@@ -744,7 +813,6 @@ internalSpeakerMesh.rotation.x = Math.PI / 2;
 internalSpeakerMesh.position.set(0, -0.76, 0.58);
 internalsGroup.add(internalSpeakerMesh);
 
-// Partículas de viento 3D para el ventilador IoT
 const windParticlesGroup = new THREE.Group();
 windParticlesGroup.visible = false;
 scene.add(windParticlesGroup);
@@ -776,7 +844,6 @@ function updatePointerLine() {
     return;
   }
 
-  // Proyectar coordenada 3D de la parte activa a pantalla 2D
   const worldTarget = chapter.anchorLocal.clone().applyMatrix4(gimenaRoot.matrixWorld);
   worldTarget.project(camera);
 
@@ -788,7 +855,6 @@ function updatePointerLine() {
   targetBeacon.style.top = `${ty}px`;
   beaconTag.textContent = chapter.beaconLabel;
 
-  // Conectar desde el borde derecho de la tarjeta activa hasta el punto 3D
   const activeCardEl = document.querySelector(`.scroll-step[data-step="${state.activeStep}"] .step-card`);
   if (!activeCardEl) return;
 
@@ -809,6 +875,7 @@ function updatePointerLine() {
 // ============================================================================
 const speechText = document.getElementById('speechText');
 const waveDots = document.getElementById('waveDots');
+const btnToggleQrOnTft = document.getElementById('btnToggleQrOnTft');
 let speechTimer = null;
 
 function setEmotion(emo) {
@@ -816,6 +883,7 @@ function setEmotion(emo) {
   document.querySelectorAll('.emo-btn').forEach((b) => {
     b.classList.toggle('active', b.dataset.emotion === emo);
   });
+  btnToggleQrOnTft.classList.toggle('active', emo === 'qr' || state.qrOnTftForced);
 }
 
 function setViewMode(mode) {
@@ -836,7 +904,7 @@ function setViewMode(mode) {
   }
 }
 
-function gimenaSpeak(text, emotion = 'happy') {
+function gimenaSpeak(text, emotion = state.emotion) {
   setEmotion(emotion);
   speechText.textContent = text;
   waveDots.classList.add('active');
@@ -886,6 +954,7 @@ const observer = new IntersectionObserver(
         if (chapter) {
           activeStepIndicator.textContent = chapter.title;
           setViewMode(chapter.viewMode);
+          btnToggleQrOnTft.classList.toggle('active', idx === 7 || state.qrOnTftForced);
         }
       }
     });
@@ -896,25 +965,44 @@ const observer = new IntersectionObserver(
 stepElements.forEach((el) => observer.observe(el));
 
 // ============================================================================
-// EVENTOS DE BOTONES, CLIC 3D Y CHAT
+// EVENTOS DE BOTONES, CLIC 3D, QR Y CHAT
 // ============================================================================
 document.getElementById('btnHeroSpeak').addEventListener('click', () => {
   state.pokeBounce = 0.28;
   gimenaSpeak(
-    '¡Hola! Haz scroll hacia abajo y te iré mostrando mi pantalla TFT, mi micrófono, mi parlante, mi espalda grabada y mi cerebro ESP32.',
+    '¡Hola! Haz scroll hacia abajo para ver mis partes señaladas en 3D y escanea el código QR directo desde mi pantalla TFT.',
     'happy'
   );
+});
+
+btnToggleQrOnTft.addEventListener('click', () => {
+  state.qrOnTftForced = !state.qrOnTftForced;
+  if (state.qrOnTftForced) {
+    document.getElementById('stepQrSection').scrollIntoView({ behavior: 'smooth' });
+    gimenaSpeak(
+      '¡Mira mi pantalla TFT 3D! Ya puse mi código QR en pantalla para que cualquier persona que pase lo escanee con su celular.',
+      'qr'
+    );
+  } else {
+    setEmotion('happy');
+  }
 });
 
 document.querySelectorAll('[data-trigger]').forEach((btn) => {
   btn.addEventListener('click', () => {
     const t = btn.dataset.trigger;
-    if (t === 'cycle-emotions') {
+    if (t === 'jump-qr') {
+      state.qrOnTftForced = true;
+      document.getElementById('stepQrSection').scrollIntoView({ behavior: 'smooth' });
+      gimenaSpeak('¡Apunta con la cámara de tu celular a mi pantalla TFT 3D para llevarme contigo!', 'qr');
+    } else if (t === 'cycle-emotions') {
+      state.qrOnTftForced = false;
       ['love', 'surprised', 'thinking', 'music', 'sad', 'sleepy', 'happy'].forEach((emo, i) => {
         setTimeout(() => setEmotion(emo), i * 550);
       });
       gimenaSpeak('¡Mira mis 7 expresiones en la pantalla TFT de 2.4 pulgadas!', 'love');
     } else if (t === 'swap-face') {
+      state.qrOnTftForced = false;
       state.faceStyle = state.faceStyle === 'pixel' ? 'anime' : 'pixel';
       document.getElementById('btnToggleFaceStyle').textContent =
         state.faceStyle === 'pixel' ? 'Pixel-Art' : 'Anime TFT';
@@ -972,20 +1060,26 @@ document.getElementById('btnSimulateFallback').addEventListener('click', () => {
   );
 });
 
-// Botones de la barra superior y dock inferior
 document.querySelectorAll('.hud-chip[data-view]').forEach((chip) => {
   chip.addEventListener('click', () => setViewMode(chip.dataset.view));
 });
 
 document.getElementById('btnToggleFaceStyle').addEventListener('click', (e) => {
+  state.qrOnTftForced = false;
   state.faceStyle = state.faceStyle === 'pixel' ? 'anime' : 'pixel';
   e.currentTarget.textContent = state.faceStyle === 'pixel' ? 'Pixel-Art' : 'Anime TFT';
 });
 
 document.querySelectorAll('.emo-btn').forEach((btn) => {
   btn.addEventListener('click', () => {
-    setEmotion(btn.dataset.emotion);
+    const emo = btn.dataset.emotion;
+    state.qrOnTftForced = emo === 'qr';
+    setEmotion(emo);
     state.pokeBounce = 0.2;
+    if (emo === 'qr') {
+      document.getElementById('stepQrSection').scrollIntoView({ behavior: 'smooth' });
+      gimenaSpeak('¡Mostrando mi código QR directo en mi pantalla TFT 3D!', 'qr');
+    }
   });
 });
 
@@ -998,7 +1092,11 @@ document.getElementById('chatForm').addEventListener('submit', (e) => {
   input.value = '';
 
   const lower = text.toLowerCase();
-  if (lower.includes('sala')) {
+  if (lower.includes('qr') || lower.includes('escan') || lower.includes('celular')) {
+    state.qrOnTftForced = true;
+    document.getElementById('stepQrSection').scrollIntoView({ behavior: 'smooth' });
+    gimenaSpeak('¡Claro! Aquí tienes mi código QR proyectado en mi pantalla TFT 3D.', 'qr');
+  } else if (lower.includes('sala')) {
     document.querySelector('.iot-pill[data-device="sala"]').click();
   } else if (lower.includes('ventilador')) {
     document.querySelector('.iot-pill[data-device="ventilador"]').click();
@@ -1027,6 +1125,18 @@ if (SpeechRecognition) {
   };
 }
 
+// Modal Modo Feria / QR Gigante
+const qrKioskModal = document.getElementById('qrKioskModal');
+document.getElementById('btnOpenQrModal').addEventListener('click', () => {
+  qrKioskModal.classList.remove('hidden');
+});
+document.getElementById('btnCloseQrModal').addEventListener('click', () => {
+  qrKioskModal.classList.add('hidden');
+});
+qrKioskModal.addEventListener('click', (e) => {
+  if (e.target === qrKioskModal) qrKioskModal.classList.add('hidden');
+});
+
 // Modal de las 3 Fotos Reales
 const galleryModal = document.getElementById('galleryModal');
 document.getElementById('btnOpenGallery').addEventListener('click', () => {
@@ -1039,7 +1149,7 @@ galleryModal.addEventListener('click', (e) => {
   if (e.target === galleryModal) galleryModal.classList.add('hidden');
 });
 
-// Seguimiento del cursor y clic directo sobre el modelo 3D
+// Seguimiento del cursor y clic directo sobre el modelo 3D (si tocas la pantalla TFT alterna el QR)
 const raycaster = new THREE.Raycaster();
 const pointerNDC = new THREE.Vector2();
 let downPos = { x: 0, y: 0 };
@@ -1063,7 +1173,17 @@ renderer.domElement.addEventListener('pointerup', (e) => {
   const hits = raycaster.intersectObjects(gimenaRoot.children, true);
   if (hits.length > 0) {
     state.pokeBounce = 0.32;
-    gimenaSpeak('¡Jiji! Me hiciste cosquillas en mi chasis impreso en 3D UwU', 'love');
+    if (hits[0].object.name === 'screen') {
+      state.qrOnTftForced = !state.qrOnTftForced;
+      gimenaSpeak(
+        state.qrOnTftForced
+          ? '¡Activaste mi código QR en la pantalla TFT! Escanéame con tu celular.'
+          : '¡Jiji! Volviendo a mi rostro kawaii UwU.',
+        state.qrOnTftForced ? 'qr' : 'love'
+      );
+    } else {
+      gimenaSpeak('¡Jiji! Me hiciste cosquillas en mi chasis impreso en 3D UwU', 'love');
+    }
   }
 });
 
@@ -1074,7 +1194,7 @@ window.addEventListener('resize', () => {
 });
 
 // ============================================================================
-// BUCLE PRINCIPAL DE ANIMACIÓN 60 FPS (INTERPOLACIÓN SUAVE CON EL SCROLL)
+// BUCLE PRINCIPAL DE ANIMACIÓN 60 FPS
 // ============================================================================
 const clock = new THREE.Clock();
 
@@ -1084,7 +1204,6 @@ function animate() {
 
   state.smoothLook.lerp(state.lookTarget, 0.08);
 
-  // Parpadeo automático
   if (elapsed > state.nextBlinkTime) {
     const p = (elapsed - state.nextBlinkTime) / 0.18;
     if (p <= 1) {
@@ -1095,7 +1214,6 @@ function animate() {
     }
   }
 
-  // Movimiento labial al hablar
   if (state.isSpeaking) {
     state.mouthOpen = 0.25 + 0.75 * Math.abs(Math.sin(elapsed * 15.5) * Math.cos(elapsed * 6.3));
   } else {
@@ -1104,7 +1222,6 @@ function animate() {
 
   renderTFTScreen(elapsed);
 
-  // Interpolación suave de la cámara y rotación del robot según el paso del Scroll
   const chapter = SCROLL_CHAPTERS[state.activeStep] || SCROLL_CHAPTERS[0];
   const isMobile = window.innerWidth < 860;
 
@@ -1120,11 +1237,9 @@ function animate() {
     controls.target.lerp(desiredTarget, 0.06);
   }
 
-  // Rotación del robot hacia el ángulo del capítulo activo + sutil seguimiento al mouse
-  const targetRotY = chapter.robotRotY + state.smoothLook.x * 0.12;
+  const targetRotY = chapter.robotRotY + state.smoothLook.x * (state.activeStep === 7 ? 0.03 : 0.12);
   gimenaRoot.rotation.y = THREE.MathUtils.lerp(gimenaRoot.rotation.y, targetRotY, 0.065);
 
-  // Respiración y despiece 3D
   state.pokeBounce = THREE.MathUtils.lerp(state.pokeBounce, 0, 0.08);
   const breathY = Math.sin(elapsed * 2.4) * 0.03;
   const explode = state.viewMode === 'exploded' ? 1 : 0;
@@ -1134,7 +1249,7 @@ function animate() {
     1.02 + breathY + explode * 0.7 + Math.abs(Math.sin(elapsed * 20)) * state.pokeBounce,
     0.1
   );
-  headGroup.rotation.x = THREE.MathUtils.lerp(headGroup.rotation.x, state.smoothLook.y * 0.1, 0.08);
+  headGroup.rotation.x = THREE.MathUtils.lerp(headGroup.rotation.x, state.smoothLook.y * 0.08, 0.08);
 
   leftArmGroup.position.x = THREE.MathUtils.lerp(leftArmGroup.position.x, -1.62 - explode * 0.55, 0.1);
   rightArmGroup.position.x = THREE.MathUtils.lerp(rightArmGroup.position.x, 1.62 + explode * 0.55, 0.1);
@@ -1145,7 +1260,6 @@ function animate() {
 
   feetGroup.position.y = THREE.MathUtils.lerp(feetGroup.position.y, -1.78 - explode * 0.4, 0.1);
 
-  // Ondas de sonido 3D saliendo de los 19 agujeros del parlante
   soundWaveRings.forEach((ring, idx) => {
     if (state.isSpeaking || state.emotion === 'music' || state.activeStep === 3) {
       const pr = (elapsed * 1.5 + idx * 0.33) % 1;
